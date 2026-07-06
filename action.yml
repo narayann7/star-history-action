@@ -219,7 +219,10 @@ runs:
             body = f'<img alt="Star history" src="{light}">'
 
         block = f"{start}\n{body}\n{end}"
-        new = re.sub(re.escape(start) + r".*?" + re.escape(end), lambda _: block, text, flags=re.S)
+        # Replace only the FIRST marker pair. A README may contain further
+        # literal marker examples (e.g. in documentation code blocks) that must
+        # not be clobbered.
+        new = re.sub(re.escape(start) + r".*?" + re.escape(end), lambda _: block, text, count=1, flags=re.S)
         open(readme, "w", encoding="utf-8").write(new)
         print(f"Updated {readme} between markers.")
         PY
