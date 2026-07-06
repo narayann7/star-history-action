@@ -23,3 +23,6 @@ jobs:
       - uses: ./
         with:
           repos: fossui/fossui   # dogfood on the repo from the motivating issue
+          # fossui is not our repo, so the default github.token gets a 403 from
+          # the restricted stargazers API. Use a PAT that can read it.
+          token: ${{ secrets.GH_PAT }}
