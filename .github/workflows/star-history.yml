@@ -1,20 +1,16 @@
-# Dogfood: run the action on this repo. Doubles as the end-to-end test and
-# exercises the commit-loop guard.
+# Dogfood: run the action on this repo. Doubles as the end-to-end test.
+# Follows our own guidance: a scheduled cadence plus a manual button, no push
+# trigger and no sub-hourly cron.
 name: Star History
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'assets/star-history/**'
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# Serialize runs so two of them never race on the same git push.
 concurrency:
   group: star-history
   cancel-in-progress: false

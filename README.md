@@ -8,7 +8,7 @@ The chart is drawn by [star-history's own code](https://github.com/star-history/
 
 ## Demo
 
-Live output of this action, charting [narayann7/DataStructureAndAlgorithm](https://github.com/narayann7/DataStructureAndAlgorithm):
+Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated this action:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo/dark.svg">
@@ -23,16 +23,16 @@ Add `.github/workflows/star-history.yml`:
 name: Star History
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'assets/star-history/**'
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 */6 * * *'   # every 6 hours; see the interval table below
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: star-history
+  cancel-in-progress: false
 
 jobs:
   star-history:
@@ -41,8 +41,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: narayann7/star-history-action@v1
         with:
-          repos: ${{ github.repository }}
+          repos: fossui/fossui   # or ${{ github.repository }} for the current repo
 ```
+
+> **Recommended cadence: a scheduled run every 3h, 6h, or once a day.** Star
+> counts move slowly, so anything more frequent just burns CI minutes and adds
+> noise. Avoid the 5-minute cron (it exists only for quick testing) and avoid a
+> `push` trigger: pushing on every commit re-runs the job constantly and adds
+> churn for no benefit. Pick a schedule and let it run.
 
 Then embed the result in your README:
 
@@ -72,27 +78,28 @@ Output: `files`, a newline-separated list of the generated paths.
 
 ## Triggers
 
-The workflow in Usage wires up three triggers, and you can keep or drop any of them:
+The recommended workflow uses two triggers:
 
-- **push to `main`** refreshes the chart while you are actively committing. The `paths-ignore` on the output directory keeps the action's own chart commit from starting the workflow again.
-- **schedule** picks up stars gained on days with no commits.
-- **workflow_dispatch** gives you a manual run button.
+- **schedule** runs the chart on a fixed cadence. This is the one you want.
+- **workflow_dispatch** gives you a manual run button for the first run and ad-hoc refreshes.
+
+A `push` trigger is also technically possible but **not recommended**: it re-runs the job on every commit, which wastes CI minutes and adds commit churn without meaningfully fresher data.
 
 ### Cron intervals
 
 Swap the `cron` line for whichever cadence fits. All times are UTC.
 
-| interval | cron |
-|---|---|
-| 5m (testing only) | `*/5 * * * *` |
-| 1h | `0 * * * *` |
-| 3h | `0 */3 * * *` |
-| 6h | `0 */6 * * *` |
-| 12h | `0 */12 * * *` |
-| daily | `0 0 * * *` |
-| weekly | `0 0 * * 0` |
+| interval | cron | recommended |
+|---|---|---|
+| 5m | `*/5 * * * *` | no, testing only |
+| 1h | `0 * * * *` | rarely |
+| 3h | `0 */3 * * *` | yes |
+| 6h | `0 */6 * * *` | yes (default) |
+| 12h | `0 */12 * * *` | yes |
+| daily | `0 0 * * *` | yes |
+| weekly | `0 0 * * 0` | fine |
 
-GitHub's minimum interval is 5 minutes, scheduled runs fire approximately rather than on the dot, and a repo with no activity for 60 days has its scheduled runs paused. Star counts move slowly, so daily is a fine default. Reach for 1h or 3h only if your repo gains stars fast enough that intraday updates matter.
+**Pick 3h, 6h, or daily.** Star counts move slowly, so that range is plenty. The 5-minute option is only for testing the setup; leaving it on burns CI minutes for identical charts. GitHub's minimum interval is 5 minutes anyway, scheduled runs fire approximately rather than on the dot, and a repo with no activity for 60 days has its scheduled runs paused.
 
 ## Token
 
@@ -107,7 +114,7 @@ Note that a token with no scopes no longer works against the stargazers endpoint
 
 ## Limitation
 
-You can only chart repos the token owns or collaborates on. Comparing arbitrary public repos you have no access to still fails, because that is exactly the data GitHub stopped handing out. Listing several of your own repos in `repos` works fine.
+Charts need a token that can read the repo's stargazers. Your own repos always work with the default `${{ github.token }}`, and most other public repos work with a personal access token. GitHub's stargazers restriction can still block some repos, and when it does the chart comes back empty with no workaround.
 
 ## Credits
 

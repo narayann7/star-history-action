@@ -2,23 +2,18 @@
 name: Star History
 
 on:
-  # Refresh when the repo is active. paths-ignore stops the chart commit
-  # from retriggering this workflow (commit-loop guard).
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'assets/star-history/**'
-  # Catch star growth on quiet days. Pick one interval:
-  #   5m (testing only) -> '*/5 * * * *'
-  #   1h  -> '0 * * * *'
-  #   3h  -> '0 */3 * * *'
-  #   6h  -> '0 */6 * * *'
-  #   12h -> '0 */12 * * *'
-  #   daily (default) -> '0 0 * * *'
-  #   weekly -> '0 0 * * 0'
+  # Recommended: a scheduled run every 3h, 6h, or once a day. Star counts move
+  # slowly, so anything more frequent just burns CI minutes. Pick one:
+  #   3h    -> '0 */3 * * *'
+  #   6h    -> '0 */6 * * *'   (default below)
+  #   12h   -> '0 */12 * * *'
+  #   daily -> '0 0 * * *'
+  # Do NOT use the 5-minute cron ('*/5 * * * *') except for a quick test, and
+  # do NOT add a `push` trigger: both re-run the job far more than star data
+  # changes and add commit churn for no benefit.
   schedule:
-    - cron: '0 0 * * *'
-  # Manual run button.
+    - cron: '0 */6 * * *'
+  # Manual run button (use this for the very first run).
   workflow_dispatch:
 
 permissions:
@@ -37,7 +32,7 @@ jobs:
 
       - uses: narayann7/star-history-action@v1
         with:
-          repos: ${{ github.repository }}
+          repos: fossui/fossui   # or ${{ github.repository }} for the current repo
           # token defaults to the automatic Actions token; override with a PAT
           # secret if the default lacks stargazers access:
           # token: ${{ secrets.GH_PAT }}
