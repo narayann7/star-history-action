@@ -14,12 +14,12 @@ The chart is drawn by [star-history's own renderer](https://github.com/star-hist
 
 ## Demo
 
-Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated it. The action maintains this block itself through the marker comments below. (This repo is charted only as a demo of the motivating issue; the intended use is charting your own repositories, and doing so needs a token that can read the target's stargazers.)
+This action charting **its own repository** on a 6-hour schedule, the normal way a consumer would use it (via `narayann7/star-history-action@v1` and the default `github.token`). The action maintains this block itself through the marker comments below, and it fills in as the repo gains stars.
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706142520.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706142520.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706134143.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706134143.svg">
 </picture>
 <!-- star-history:end -->
 
