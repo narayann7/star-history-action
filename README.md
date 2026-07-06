@@ -12,8 +12,8 @@ Live output of this action, charting [fossui/fossui](https://github.com/fossui/f
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706133620.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706133620.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706134143.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706134143.svg">
 </picture>
 <!-- star-history:end -->
 
@@ -56,6 +56,10 @@ Then add these two marker comments to your README where you want the chart:
 
 ```html
 <!-- star-history:start -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706134143.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706134143.svg">
+</picture>
 <!-- star-history:end -->
 ```
 
@@ -65,8 +69,8 @@ current chart and updates it when the chart changes:
 ```html
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706120000.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706120000.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706134143.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706134143.svg">
 </picture>
 <!-- star-history:end -->
 ```
