@@ -6,6 +6,15 @@ On June 30, 2026 GitHub restricted the stargazers endpoint to a repo's own admin
 
 Rendering is handled by [`star-history-cli`](https://www.npmjs.com/package/star-history-cli).
 
+## Demo
+
+Live output of this action, charting [narayann7/DataStructureAndAlgorithm](https://github.com/narayann7/DataStructureAndAlgorithm):
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demo/dark.svg">
+  <img alt="Star history chart" src="assets/demo/light.svg">
+</picture>
+
 ## Usage
 
 Add `.github/workflows/star-history.yml`:
