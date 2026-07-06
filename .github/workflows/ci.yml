@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate action.yml is parseable
+        run: python3 -c "import yaml; yaml.safe_load(open('action.yml')); print('action.yml OK')"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Confirm the pinned CLI resolves and runs. We do not render a chart here:
+      # under the stargazers restriction only repos the token can access work,
+      # and a fresh repo may have zero stars, so a render assertion would be
+      # flaky. The dogfood workflow is the real end-to-end render test.
+      - name: Confirm star-history-cli is installable
+        run: npx --yes star-history-cli@1.0.1 --version

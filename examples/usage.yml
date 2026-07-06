@@ -1,0 +1,42 @@
+# Copy this into .github/workflows/star-history.yml in your repo.
+name: Star History
+
+on:
+  # Refresh when the repo is active. paths-ignore stops the chart commit
+  # from retriggering this workflow (commit-loop guard).
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'assets/star-history/**'
+  # Catch star growth on quiet days. Pick one interval:
+  #   1h  -> '0 * * * *'
+  #   3h  -> '0 */3 * * *'
+  #   6h  -> '0 */6 * * *'
+  #   12h -> '0 */12 * * *'
+  #   daily (default) -> '0 0 * * *'
+  #   weekly -> '0 0 * * 0'
+  schedule:
+    - cron: '0 0 * * *'
+  # Manual run button.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Serialize runs so two of them never race on the same git push.
+concurrency:
+  group: star-history
+  cancel-in-progress: false
+
+jobs:
+  star-history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: narayann7/star-history-action@v1
+        with:
+          repos: ${{ github.repository }}
+          # token defaults to the automatic Actions token; override with a PAT
+          # secret if the default lacks stargazers access:
+          # token: ${{ secrets.GH_PAT }}

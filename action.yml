@@ -1,0 +1,139 @@
+name: 'Star History Action'
+description: 'Generate star history SVG charts and commit them to your repo, bypassing the restricted star-history SVG API.'
+author: 'narayann7'
+
+branding:
+  icon: 'star'
+  color: 'yellow'
+
+inputs:
+  repos:
+    description: 'Comma-separated owner/repo list. Defaults to the current repository. Only repos the token owns or collaborates on will work.'
+    required: false
+    default: ${{ github.repository }}
+  output-dir:
+    description: 'Directory where generated SVGs are written.'
+    required: false
+    default: 'assets/star-history'
+  token:
+    description: 'GitHub token used for the stargazers API. Defaults to the automatic Actions token. Supply a PAT secret if the default lacks access.'
+    required: false
+    default: ${{ github.token }}
+  style:
+    description: 'Chart style: clean or xkcd.'
+    required: false
+    default: 'clean'
+  type:
+    description: 'Chart mode: Date or Timeline.'
+    required: false
+    default: 'Date'
+  themes:
+    description: 'Comma-separated themes to render: light, dark.'
+    required: false
+    default: 'light,dark'
+  width:
+    description: 'Image width in pixels.'
+    required: false
+    default: '800'
+  commit:
+    description: 'Whether to commit and push the generated files.'
+    required: false
+    default: 'true'
+  commit-message:
+    description: 'Commit message used when committing generated files.'
+    required: false
+    default: 'chore: update star history [skip ci]'
+
+outputs:
+  files:
+    description: 'Newline-separated list of generated SVG file paths.'
+    value: ${{ steps.render.outputs.files }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Render star history charts
+      id: render
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        REPOS: ${{ inputs.repos }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        STYLE: ${{ inputs.style }}
+        TYPE: ${{ inputs.type }}
+        THEMES: ${{ inputs.themes }}
+        WIDTH: ${{ inputs.width }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${GITHUB_TOKEN:-}" ]; then
+          echo "::error::token input is empty. Provide a GitHub token with access to the target repos."
+          exit 1
+        fi
+
+        mkdir -p "$OUTPUT_DIR"
+
+        files=""
+        IFS=',' read -ra THEME_LIST <<< "$THEMES"
+        for raw_theme in "${THEME_LIST[@]}"; do
+          theme="$(echo "$raw_theme" | xargs)"
+          [ -z "$theme" ] && continue
+          out="$OUTPUT_DIR/$theme.svg"
+
+          echo "Rendering $REPOS ($theme) -> $out"
+          npx --yes star-history-cli@1.0.1 "$REPOS" \
+            --format svg \
+            --style "$STYLE" \
+            --type "$TYPE" \
+            --theme "$theme" \
+            --width "$WIDTH" \
+            --token "$GITHUB_TOKEN" \
+            --output "$out"
+
+          if [ ! -s "$out" ]; then
+            echo "::error::Rendered SVG is empty: $out"
+            exit 1
+          fi
+          files="${files}${out}"$'\n'
+        done
+
+        {
+          echo "files<<STAR_HISTORY_EOF"
+          printf '%s' "$files"
+          echo "STAR_HISTORY_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Commit generated charts
+      if: ${{ inputs.commit == 'true' }}
+      shell: bash
+      env:
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+      run: |
+        set -euo pipefail
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        git add "$OUTPUT_DIR"
+        if git diff --cached --quiet; then
+          echo "No star history changes to commit."
+          exit 0
+        fi
+
+        git commit -m "$COMMIT_MESSAGE"
+
+        # Rebase onto any commits that landed while this run was working, so the
+        # push does not fail with a non-fast-forward error.
+        branch="$(git rev-parse --abbrev-ref HEAD)"
+        if [ "$branch" = "HEAD" ]; then
+          echo "::error::Detached HEAD; cannot push. Trigger this action on push/schedule/workflow_dispatch (not pull_request)."
+          exit 1
+        fi
+        git pull --rebase --autostash origin "$branch" || true
+        git push origin "HEAD:$branch"
