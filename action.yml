@@ -1,5 +1,5 @@
 name: 'Star History Action'
-description: 'Unofficial: render a star history SVG for your own repos with star-history''s renderer and commit it into your repo. Not affiliated with star-history.com.'
+description: 'Render a self-updating star history chart and commit it into your README. Unofficial star-history helper action.'
 author: 'narayann7'
 
 branding:
