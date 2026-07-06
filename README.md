@@ -8,12 +8,14 @@ The chart is drawn by [star-history's own code](https://github.com/star-history/
 
 ## Demo
 
-Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated this action:
+Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated this action. This block is maintained by the action itself, through the marker comments below:
 
+<!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demo/dark.svg">
-  <img alt="Star history chart" src="assets/demo/light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706133620.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706133620.svg">
 </picture>
+<!-- star-history:end -->
 
 ## Usage
 
@@ -50,16 +52,33 @@ jobs:
 > `push` trigger: pushing on every commit re-runs the job constantly and adds
 > churn for no benefit. Pick a schedule and let it run.
 
-Then embed the result in your README:
+Then add these two marker comments to your README where you want the chart:
 
 ```html
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/dark.svg">
-  <img alt="Star history" src="assets/star-history/light.svg">
-</picture>
+<!-- star-history:start -->
+<!-- star-history:end -->
 ```
 
-The `<picture>` block swaps the dark chart in automatically on GitHub's dark theme.
+Leave them empty. On each run the action fills the space between them with the
+current chart and updates it when the chart changes:
+
+```html
+<!-- star-history:start -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706120000.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706120000.svg">
+</picture>
+<!-- star-history:end -->
+```
+
+The filename carries a UTC timestamp that changes only when the chart changes.
+That is deliberate: a new filename forces GitHub's image cache to fetch the
+fresh chart instead of showing a stale one, and the action deletes the previous
+timestamped files so the repo does not accumulate them. The `<picture>` block
+also swaps the dark chart in automatically on GitHub's dark theme.
+
+If you would rather manage the embed yourself, set `update-readme: false` and
+point a plain `<img>` at whatever the action writes.
 
 ## Inputs
 
@@ -71,10 +90,12 @@ The `<picture>` block swaps the dark chart in automatically on GitHub's dark the
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
+| `update-readme` | `true` | Rewrite the README between the `star-history` marker comments to point at the newest chart. |
+| `readme` | `README.md` | Path to the README to update. |
 | `commit` | `true` | Commit and push the generated files. |
 | `commit-message` | `chore: update star history [skip ci]` | Message used when committing. |
 
-Output: `files`, a newline-separated list of the generated paths.
+Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest chart paths).
 
 ## Triggers
 

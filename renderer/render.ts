@@ -17,6 +17,7 @@ import XYChart from "./vendor/shared/packages/xy-chart";
 import { convertDataToChartData, getRepoData } from "./vendor/shared/common/chart";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { createHash } from "node:crypto";
 
 // star-history fetches at most this many pages of stargazers per repo.
 const MAX_REQUEST_AMOUNT = 16;
@@ -84,6 +85,29 @@ async function main() {
   if (!token) throw new Error("--token (or GITHUB_TOKEN env) is required");
 
   const repoData = await getRepoData(repos, token, MAX_REQUEST_AMOUNT);
+
+  // A signature over just the star data (dates + counts, not the rendered
+  // pixels). The SVG has sub-pixel float jitter between runs, so comparing SVGs
+  // would always look "changed"; the data hash only moves when stars actually
+  // change or the day rolls over. The action uses it to decide whether to commit.
+  if (args.signature) {
+    // Normalize each record's date to day granularity. star-history stamps the
+    // final "now" point with a full timestamp (seconds), which would otherwise
+    // change the signature on every run. Truncating to the day makes it stable
+    // within a day and only change on real star movement or a day rollover.
+    const sigInput = JSON.stringify(
+      repoData.map((r: any) => ({
+        repo: r.repo,
+        records: r.starRecords.map((x: any) => ({
+          d: String(x.date).split(" ")[0],
+          c: x.count,
+        })),
+      }))
+    );
+    const sig = createHash("sha256").update(sigInput).digest("hex");
+    mkdirSync(dirname(args.signature), { recursive: true });
+    writeFileSync(args.signature, sig, "utf-8");
+  }
 
   const dom = new JSDOM(`<!DOCTYPE html><body></body>`);
   const body = dom.window.document.querySelector("body")!;

@@ -22,4 +22,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./
         with:
-          repos: ${{ github.repository }}
+          repos: fossui/fossui   # dogfood on the repo from the motivating issue
