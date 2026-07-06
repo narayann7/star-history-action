@@ -109,6 +109,12 @@ Note that a token with no scopes no longer works against the stargazers endpoint
 
 You can only chart repos the token owns or collaborates on. Comparing arbitrary public repos you have no access to still fails, because that is exactly the data GitHub stopped handing out. Listing several of your own repos in `repos` works fine.
 
+## Credits
+
+The chart rendering is powered by [star-history](https://github.com/star-history/star-history) (MIT). Their chart code is vendored under `renderer/vendor` and does all the real work of turning stargazer data into an SVG. This action is a thin wrapper that runs it in CI and commits the result. Thanks to the star-history maintainers.
+
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+This project is MIT. See [LICENSE](./LICENSE).
+
+It bundles star-history's code under `renderer/vendor`, which is also MIT. That license is kept intact at [`renderer/vendor/LICENSE`](./renderer/vendor/LICENSE), with attribution and the pinned commit in [`renderer/NOTICE.md`](./renderer/NOTICE.md).
