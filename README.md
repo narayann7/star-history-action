@@ -18,10 +18,33 @@ This action charting **its own repository** on a 6-hour schedule, the normal way
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706145625.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706145625.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706134143.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260706134143.svg">
 </picture>
 <!-- star-history:end -->
+
+## How it works
+
+```
+  schedule / manual dispatch
+             │
+             ▼
+  ┌────────────────────────────────────┐
+  │  GitHub Action (runs in your CI)    │
+  │                                      │
+  │  render chart ──► changed?           │
+  │       │                              │
+  │       ├─ yes ─► commit SVG           │
+  │       │         + update README      │
+  │       └─ no  ─► do nothing           │
+  └──────────────────┬───────────────────┘
+                     ▼
+      README <picture> shows the chart
+```
+
+The action renders the chart with your own token, and commits it only when the
+star data actually changes. For the full flow, the `render.ts` pipeline, and the
+change-detection logic, see [docs/architecture.md](docs/architecture.md).
 
 ## Usage
 
