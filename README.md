@@ -4,7 +4,7 @@ Keep a star history chart in your README even though GitHub locked down the star
 
 On June 30, 2026 GitHub restricted the stargazers endpoint to a repo's own admins and collaborators, so `api.star-history.com/svg` now returns blank charts for most repos and README badges show nothing. A token that owns or collaborates on a repo can still read that repo's stargazer data, though. This action uses that fact: it runs in your CI, renders the chart with your own access, commits the SVG into your repo, and your README embeds the committed file. It does not touch the live SVG API at all.
 
-Rendering is handled by [`star-history-cli`](https://www.npmjs.com/package/star-history-cli).
+The chart is drawn by [star-history's own code](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node. It produces the same SVG as star-history.com, with no headless browser and no third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
 ## Demo
 
@@ -62,7 +62,6 @@ The `<picture>` block swaps the dark chart in automatically on GitHub's dark the
 | `repos` | current repo | Comma-separated `owner/repo` list. |
 | `output-dir` | `assets/star-history` | Where the SVGs are written. |
 | `token` | `${{ github.token }}` | Token for the stargazers API. |
-| `style` | `clean` | `clean` or `xkcd`. |
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
@@ -85,6 +84,7 @@ Swap the `cron` line for whichever cadence fits. All times are UTC.
 
 | interval | cron |
 |---|---|
+| 5m (testing only) | `*/5 * * * *` |
 | 1h | `0 * * * *` |
 | 3h | `0 */3 * * *` |
 | 6h | `0 */6 * * *` |

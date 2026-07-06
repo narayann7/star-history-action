@@ -19,9 +19,23 @@ jobs:
         with:
           node-version: '24'
 
-      # Confirm the pinned CLI resolves and runs. We do not render a chart here:
-      # under the stargazers restriction only repos the token can access work,
-      # and a fresh repo may have zero stars, so a render assertion would be
-      # flaky. The dogfood workflow is the real end-to-end render test.
-      - name: Confirm star-history-cli is installable
-        run: npx --yes star-history-cli@1.0.1 --version
+      - name: Install renderer dependencies
+        run: npm ci --prefix renderer --no-audit --no-fund
+
+      # Render a chart for this repo to confirm the vendored renderer works end
+      # to end. github.token can read its own repo's stargazers. A fresh repo may
+      # have zero stars, which still produces a valid SVG, so we only assert the
+      # file is non-empty and looks like SVG.
+      - name: Smoke-test the renderer
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          renderer/node_modules/.bin/tsx renderer/render.ts \
+            --repos "${{ github.repository }}" \
+            --token "$GITHUB_TOKEN" \
+            --theme light --type Date --width 800 \
+            --output /tmp/smoke.svg
+          test -s /tmp/smoke.svg
+          head -c 64 /tmp/smoke.svg | grep -qi 'svg'
+          echo "renderer smoke test OK"

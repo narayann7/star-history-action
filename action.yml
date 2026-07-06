@@ -19,10 +19,6 @@ inputs:
     description: 'GitHub token used for the stargazers API. Defaults to the automatic Actions token. Supply a PAT secret if the default lacks access.'
     required: false
     default: ${{ github.token }}
-  style:
-    description: 'Chart style: clean or xkcd.'
-    required: false
-    default: 'clean'
   type:
     description: 'Chart mode: Date or Timeline.'
     required: false
@@ -57,6 +53,12 @@ runs:
       with:
         node-version: '24'
 
+    - name: Install renderer dependencies
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: npm ci --prefix "$ACTION_PATH/renderer" --no-audit --no-fund
+
     - name: Render star history charts
       id: render
       shell: bash
@@ -64,10 +66,10 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
         REPOS: ${{ inputs.repos }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
-        STYLE: ${{ inputs.style }}
         TYPE: ${{ inputs.type }}
         THEMES: ${{ inputs.themes }}
         WIDTH: ${{ inputs.width }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
 
@@ -76,6 +78,7 @@ runs:
           exit 1
         fi
 
+        R="$ACTION_PATH/renderer"
         mkdir -p "$OUTPUT_DIR"
 
         files=""
@@ -86,13 +89,12 @@ runs:
           out="$OUTPUT_DIR/$theme.svg"
 
           echo "Rendering $REPOS ($theme) -> $out"
-          npx --yes star-history-cli@1.0.1 "$REPOS" \
-            --format svg \
-            --style "$STYLE" \
-            --type "$TYPE" \
-            --theme "$theme" \
-            --width "$WIDTH" \
+          "$R/node_modules/.bin/tsx" "$R/render.ts" \
+            --repos "$REPOS" \
             --token "$GITHUB_TOKEN" \
+            --theme "$theme" \
+            --type "$TYPE" \
+            --width "$WIDTH" \
             --output "$out"
 
           if [ ! -s "$out" ]; then

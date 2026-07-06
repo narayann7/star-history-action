@@ -1,3 +1,4 @@
 node_modules/
+renderer/out/
 *.log
 .DS_Store
