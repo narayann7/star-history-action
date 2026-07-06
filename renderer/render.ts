@@ -33,6 +33,31 @@ function fixJsdomSvgCasing(svgContent: string): string {
     .replace(/ychannelselector/g, "yChannelSelector");
 }
 
+// The chart draws the repo/owner logo as <image href="https://avatars...">.
+// GitHub sanitizes committed SVGs and blocks external image refs, so those show
+// as broken-image boxes. Inline each external image as a base64 data URL, the
+// same thing star-history's own browser export does before saving.
+async function inlineExternalImages(svg: SVGSVGElement): Promise<void> {
+  const images = Array.from(svg.querySelectorAll("image"));
+  await Promise.all(
+    images.map(async (img) => {
+      const href = img.getAttribute("href") || img.getAttribute("xlink:href");
+      if (!href || !/^https?:\/\//i.test(href)) return;
+      try {
+        const res = await fetch(href, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = Buffer.from(await res.arrayBuffer());
+        const type = res.headers.get("content-type") || "image/png";
+        img.setAttribute("href", `data:${type};base64,${buf.toString("base64")}`);
+      } catch (e) {
+        // Drop an unreachable logo rather than leaving a broken external ref.
+        img.remove();
+        process.stderr.write(`Inlined image failed (${href}), removed: ${e}\n`);
+      }
+    })
+  );
+}
+
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
@@ -83,6 +108,8 @@ async function main() {
       chartWidth: width,
     }
   );
+
+  await inlineExternalImages(svg);
 
   const svgContent = fixJsdomSvgCasing(svg.outerHTML);
   const optimized = optimize(svgContent, { multipass: true }).data;
