@@ -147,5 +147,15 @@ main().catch((err) => {
   const msg = err?.message || String(err);
   const status = err?.status ? ` [status ${err.status}]` : "";
   process.stderr.write(`Render failed${status}: ${msg}\n`);
+  // star-history maps every HTTP 403 to "rate limit exceeded", but under the
+  // stargazers restriction a 403 usually means the token cannot read this
+  // repo's stargazers. Point users at the real fix.
+  if (err?.status === 403 || err?.status === 401) {
+    process.stderr.write(
+      "Hint: this is often an access problem, not a rate limit. The token may " +
+        "lack stargazers access for this repo. Charting a repo you do not own " +
+        "needs a personal access token that can read it (public_repo scope).\n"
+    );
+  }
   process.exit(1);
 });

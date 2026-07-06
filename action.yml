@@ -1,5 +1,5 @@
 name: 'Star History Action'
-description: 'Generate star history SVG charts and commit them to your repo, bypassing the restricted star-history SVG API.'
+description: 'Unofficial: render a star history SVG for your own repos with star-history''s renderer and commit it into your repo. Not affiliated with star-history.com.'
 author: 'narayann7'
 
 branding:
@@ -115,9 +115,10 @@ runs:
         probe="${themes[0]}"
         SIGFILE="$OUTPUT_DIR/.star-history.sig"
         echo "Rendering $REPOS ($probe) as change probe"
+        # The token is passed via the GITHUB_TOKEN env var (set on this step),
+        # not on argv, so it does not appear in the process list.
         "$R/node_modules/.bin/tsx" "$R/render.ts" \
           --repos "$REPOS" \
-          --token "$GITHUB_TOKEN" \
           --theme "$probe" \
           --type "$TYPE" \
           --width "$WIDTH" \
@@ -143,7 +144,6 @@ runs:
           echo "Rendering $REPOS ($theme)"
           "$R/node_modules/.bin/tsx" "$R/render.ts" \
             --repos "$REPOS" \
-            --token "$GITHUB_TOKEN" \
             --theme "$theme" \
             --type "$TYPE" \
             --width "$WIDTH" \

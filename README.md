@@ -1,14 +1,20 @@
 # Star History Action
 
-Keep a star history chart in your README even though GitHub locked down the stargazers API.
+Keep a self-updating star history chart in **your own** repository's README.
 
-On June 30, 2026 GitHub restricted the stargazers endpoint to a repo's own admins and collaborators, so `api.star-history.com/svg` now returns blank charts for most repos and README badges show nothing. A token that owns or collaborates on a repo can still read that repo's stargazer data, though. This action uses that fact: it runs in your CI, renders the chart with your own access, commits the SVG into your repo, and your README embeds the committed file. It does not touch the live SVG API at all.
+> **Unofficial.** This is a community project and is not affiliated with, endorsed by, or maintained by [star-history.com](https://www.star-history.com) or its team. It reuses their open-source renderer with credit (see [Credits](#credits)).
 
-The chart is drawn by [star-history's own code](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node. It produces the same SVG as star-history.com, with no headless browser and no third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
+## Why
+
+On June 30, 2026 GitHub limited its stargazers endpoint to a repo's own admins and collaborators. Since then the hosted `api.star-history.com/svg` badge renders blank for many repos, so live star-history README badges stopped working.
+
+The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits the SVG into your repo so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
+
+The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so the output matches star-history.com without a headless browser or a third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
 ## Demo
 
-Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated this action. This block is maintained by the action itself, through the marker comments below:
+Live output of this action, charting [fossui/fossui](https://github.com/fossui/fossui), the repo from the [issue](https://github.com/star-history/star-history/issues/539) that motivated it. The action maintains this block itself through the marker comments below. (This repo is charted only as a demo of the motivating issue; the intended use is charting your own repositories, and doing so needs a token that can read the target's stargazers.)
 
 <!-- star-history:start -->
 <picture>
@@ -124,14 +130,16 @@ Swap the `cron` line for whichever cadence fits. All times are UTC.
 
 ## Token
 
-The default `${{ github.token }}` is the automatic token GitHub injects into every workflow run, scoped to the repo the workflow lives in. For your own repo that is expected to satisfy the stargazers restriction. If a run comes back empty or unauthorized, generate a personal access token with the `public_repo` scope and pass it through the `token` input from a secret:
+The default `${{ github.token }}` is the automatic token GitHub injects into every workflow run, scoped to the repo the workflow lives in. For your own repo that satisfies the stargazers restriction, so **most users need no personal token at all**.
+
+Only if a run fails as unauthorized (for example when charting a repo the default token cannot read) supply a personal access token through the `token` input from a secret:
 
 ```yaml
         with:
           token: ${{ secrets.GH_PAT }}
 ```
 
-Note that a token with no scopes no longer works against the stargazers endpoint.
+When you do need one, use the **least privilege that works**: a classic token with only the `public_repo` scope, or a fine-grained token with read-only access limited to the repositories you chart. Do not use a broad `repo`/`workflow` token. A token with no scopes does not work against the stargazers endpoint.
 
 ## Limitation
 
