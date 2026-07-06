@@ -42,6 +42,8 @@ function fixJsdomSvgCasing(svgContent: string): string {
 // GitHub sanitizes committed SVGs and blocks external image refs, so those show
 // as broken-image boxes. Inline each external image as a base64 data URL, the
 // same thing star-history's own browser export does before saving.
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB cap per inlined image.
+
 async function inlineExternalImages(svg: SVGSVGElement): Promise<void> {
   const images = Array.from(svg.querySelectorAll("image"));
   await Promise.all(
@@ -49,15 +51,36 @@ async function inlineExternalImages(svg: SVGSVGElement): Promise<void> {
       const href = img.getAttribute("href") || img.getAttribute("xlink:href");
       if (!href || !/^https?:\/\//i.test(href)) return;
       try {
-        const res = await fetch(href, { signal: AbortSignal.timeout(10000) });
+        const res = await fetch(href, {
+          signal: AbortSignal.timeout(10000),
+          redirect: "follow",
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Only inline actual images, so a hostile or wrong endpoint cannot embed
+        // arbitrary content into the committed SVG.
+        const type = res.headers.get("content-type") || "";
+        if (!/^image\//i.test(type)) {
+          throw new Error(`unexpected content-type "${type || "none"}"`);
+        }
+
+        // Reject oversized responses. Check the advertised length first, then
+        // enforce the cap on the actual bytes.
+        const declared = Number(res.headers.get("content-length") || "0");
+        if (declared > MAX_IMAGE_BYTES) {
+          throw new Error(`image too large (${declared} bytes)`);
+        }
         const buf = Buffer.from(await res.arrayBuffer());
-        const type = res.headers.get("content-type") || "image/png";
+        if (buf.length > MAX_IMAGE_BYTES) {
+          throw new Error(`image too large (${buf.length} bytes)`);
+        }
+
         img.setAttribute("href", `data:${type};base64,${buf.toString("base64")}`);
       } catch (e) {
-        // Drop an unreachable logo rather than leaving a broken external ref.
+        // Drop an unreachable or unacceptable logo rather than leaving a broken
+        // external ref (which GitHub would show as a broken-image box).
         img.remove();
-        process.stderr.write(`Inlined image failed (${href}), removed: ${e}\n`);
+        process.stderr.write(`Inlined image skipped (${href}): ${e}\n`);
       }
     })
   );
