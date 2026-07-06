@@ -7,9 +7,13 @@
  * third-party CLI. The vendored star-history source lives under vendor/shared
  * (see vendor/LICENSE and NOTICE.md for attribution).
  *
+ * The GitHub token is read from the GITHUB_TOKEN environment variable (kept off
+ * the command line so it never appears in a process listing).
+ *
  * Usage:
- *   tsx render.ts --repos owner/repo[,owner/repo2] --token <t> \
- *     --theme light|dark --type Date|Timeline --width <px> --output <file>
+ *   GITHUB_TOKEN=<t> tsx render.ts --repos owner/repo[,owner/repo2] \
+ *     --theme light|dark --type Date|Timeline --width <px> --output <file> \
+ *     [--signature <file>]
  */
 import { JSDOM } from "jsdom";
 import { optimize } from "svgo";
@@ -63,9 +67,15 @@ function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a.startsWith("--")) {
-      out[a.slice(2)] = argv[i + 1];
+    if (!a.startsWith("--")) continue;
+    const next = argv[i + 1];
+    // Only consume the next token as a value if it is not itself a flag. This
+    // avoids "--signature --output x" silently setting signature to "--output".
+    if (next !== undefined && !next.startsWith("--")) {
+      out[a.slice(2)] = next;
       i++;
+    } else {
+      out[a.slice(2)] = "";
     }
   }
   return out;
@@ -74,7 +84,9 @@ function parseArgs(argv: string[]): Record<string, string> {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const repos = (args.repos || "").split(",").map((r) => r.trim()).filter(Boolean);
-  const token = args.token || process.env.GITHUB_TOKEN || "";
+  // Token is env-only, never accepted on argv, so it cannot leak into a process
+  // listing or CI logs.
+  const token = process.env.GITHUB_TOKEN || "";
   const theme = args.theme === "dark" ? "dark" : "light";
   const type = args.type === "Timeline" ? "Timeline" : "Date";
   const width = Number(args.width) || 800;
@@ -82,7 +94,7 @@ async function main() {
 
   if (repos.length === 0) throw new Error("--repos is required");
   if (!output) throw new Error("--output is required");
-  if (!token) throw new Error("--token (or GITHUB_TOKEN env) is required");
+  if (!token) throw new Error("GITHUB_TOKEN environment variable is required");
 
   const repoData = await getRepoData(repos, token, MAX_REQUEST_AMOUNT);
 
@@ -134,6 +146,16 @@ async function main() {
   );
 
   await inlineExternalImages(svg);
+
+  // Remove the embedded @font-face <style>. GitHub strips <style>/@font-face
+  // when an SVG is served via <img>, so the bundled font never renders in a
+  // README anyway; dropping it cuts ~53 KB per file and avoids shipping a font
+  // whose license differs from star-history's MIT.
+  svg.querySelectorAll("style").forEach((el) => el.remove());
+  // star-history's own image export strips browser-only nodes; do the same.
+  // These are also the only Math.random()-driven elements, so removing them
+  // keeps the output deterministic.
+  svg.querySelectorAll(".browser-only").forEach((el) => el.remove());
 
   const svgContent = fixJsdomSvgCasing(svg.outerHTML);
   const optimized = optimize(svgContent, { multipass: true }).data;

@@ -33,9 +33,8 @@ jobs:
           set -euo pipefail
           renderer/node_modules/.bin/tsx renderer/render.ts \
             --repos "${{ github.repository }}" \
-            --token "$GITHUB_TOKEN" \
             --theme light --type Date --width 800 \
             --output /tmp/smoke.svg
           test -s /tmp/smoke.svg
-          head -c 64 /tmp/smoke.svg | grep -qi 'svg'
+          grep -qi '<svg' /tmp/smoke.svg
           echo "renderer smoke test OK"

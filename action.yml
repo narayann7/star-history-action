@@ -99,13 +99,27 @@ runs:
         mkdir -p "$OUTPUT_DIR"
         TMP="$(mktemp -d)"
 
-        # Collect trimmed, non-empty theme names.
+        # Collect trimmed, validated theme names. Themes are used in file paths
+        # and delete globs, so restrict them to a safe charset to prevent path
+        # traversal or glob collisions.
         themes=()
         IFS=',' read -ra THEME_LIST <<< "$THEMES"
         for raw_theme in "${THEME_LIST[@]}"; do
-          theme="$(echo "$raw_theme" | xargs)"
-          [ -n "$theme" ] && themes+=("$theme")
+          # Trim leading/trailing whitespace with pure bash (no word splitting).
+          theme="${raw_theme#"${raw_theme%%[![:space:]]*}"}"
+          theme="${theme%"${theme##*[![:space:]]}"}"
+          [ -z "$theme" ] && continue
+          if ! [[ "$theme" =~ ^[a-z0-9]+$ ]]; then
+            echo "::error::Invalid theme name '$theme'. Themes must match [a-z0-9]."
+            exit 1
+          fi
+          themes+=("$theme")
         done
+
+        if [ "${#themes[@]}" -eq 0 ]; then
+          echo "::error::No valid themes in input '$THEMES'."
+          exit 1
+        fi
 
         # Change detection is by star data, not rendered pixels: the SVG has
         # sub-pixel float jitter every run, so comparing SVGs would always look
@@ -255,5 +269,9 @@ runs:
           echo "::error::Detached HEAD; cannot push. Trigger this action on push/schedule/workflow_dispatch (not pull_request)."
           exit 1
         fi
-        git pull --rebase --autostash origin "$branch" || true
+        if ! git pull --rebase origin "$branch"; then
+          echo "::error::Rebase onto origin/$branch failed. Aborting rather than pushing an inconsistent state."
+          git rebase --abort 2>/dev/null || true
+          exit 1
+        fi
         git push origin "HEAD:$branch"

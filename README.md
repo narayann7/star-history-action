@@ -141,6 +141,8 @@ Only if a run fails as unauthorized (for example when charting a repo the defaul
 
 When you do need one, use the **least privilege that works**: a classic token with only the `public_repo` scope, or a fine-grained token with read-only access limited to the repositories you chart. Do not use a broad `repo`/`workflow` token. A token with no scopes does not work against the stargazers endpoint.
 
+The `token` input is used **only to read stargazers**. The commit and push are authorized by the credentials `actions/checkout` persists (the workflow's default `GITHUB_TOKEN`), which is why `permissions: contents: write` is required. A PAT you pass here does not authorize the push. One consequence: because the push uses the default token, it does not trigger other `on: push` workflows, and it can be rejected on a branch with required status checks.
+
 ## Limitation
 
 Charts need a token that can read the repo's stargazers. Your own repos always work with the default `${{ github.token }}`, and most other public repos work with a personal access token. GitHub's stargazers restriction can still block some repos, and when it does the chart comes back empty with no workaround.
