@@ -18,8 +18,8 @@ This action charting **its own repository** on a 6-hour schedule, the normal way
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260710034455.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260710034455.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260710193905.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light-20260710193905.svg">
 </picture>
 <!-- star-history:end -->
 
