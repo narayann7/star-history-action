@@ -1,9 +1,11 @@
 # Dogfood: this repo runs its own published action on itself, the normal way a
 # consumer would. Charting our own repo, so the default github.token is enough
-# (no PAT). Scheduled cadence plus a manual button, no push trigger.
+# (no PAT). Scheduled cadence, a manual button, plus a run on every push to main.
 name: Star History
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:

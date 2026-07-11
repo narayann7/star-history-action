@@ -2,7 +2,7 @@
 # Verifies the render logic writes stable, non-timestamped filenames + a PNG.
 # Render logic lives in scripts/render-charts.sh; the png output is declared in action.yml.
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 # Fail if the render script still contains timestamped naming or the delete glob.
 if grep -q 'star-history-\$theme-\$TS' scripts/render-charts.sh; then

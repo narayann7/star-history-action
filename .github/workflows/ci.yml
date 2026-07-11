@@ -49,8 +49,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-        run: bash test-integration.sh
+        run: bash tests/test-integration.sh
 
       # Static-string checks: stable naming, no timestamped output, png wiring.
       - name: Stable-name checks
-        run: bash test-stable-names.sh
+        run: bash tests/test-stable-names.sh

@@ -8,7 +8,7 @@
 # Requires GITHUB_TOKEN with stargazers access to $REPO (a repo with zero stars
 # still renders a valid empty chart, which is all these assertions need).
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 ACTION_PATH="$(pwd)"; export ACTION_PATH
 REPO="${REPO:-nullvoidx/nullvoidx}"
