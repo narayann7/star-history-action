@@ -39,6 +39,10 @@ inputs:
     description: 'Path to the README to update when update-readme is true.'
     required: false
     default: 'README.md'
+  readme-format:
+    description: 'README embed style: "picture" (SVG <picture>, GitHub dark/light) or "png" (plain-markdown absolute-URL PNG, renders on npm/pub.dev).'
+    required: false
+    default: 'picture'
   commit:
     description: 'Whether to commit and push the generated files.'
     required: false
@@ -229,42 +233,15 @@ runs:
         README: ${{ inputs.readme }}
         LIGHT: ${{ steps.render.outputs.light }}
         DARK: ${{ steps.render.outputs.dark }}
+        PNG: ${{ steps.render.outputs.png }}
+        README_FORMAT: ${{ inputs.readme-format }}
+        REPO: ${{ github.repository }}
+        BRANCH: ${{ github.ref_name }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        python3 - <<'PY'
-        import os, re, sys
-        readme = os.environ["README"]
-        light = os.environ["LIGHT"]
-        dark = os.environ.get("DARK", "")
-        start = "<!-- star-history:start -->"
-        end = "<!-- star-history:end -->"
-
-        if not os.path.exists(readme):
-            print(f"{readme} not found; skipping README update.")
-            sys.exit(0)
-        text = open(readme, encoding="utf-8").read()
-        if start not in text or end not in text:
-            print("star-history markers not found in README; skipping update.")
-            sys.exit(0)
-
-        if dark:
-            body = (
-                '<picture>\n'
-                f'  <source media="(prefers-color-scheme: dark)" srcset="{dark}">\n'
-                f'  <img alt="Star history" src="{light}">\n'
-                '</picture>'
-            )
-        else:
-            body = f'<img alt="Star history" src="{light}">'
-
-        block = f"{start}\n{body}\n{end}"
-        # Replace only the FIRST marker pair. A README may contain further
-        # literal marker examples (e.g. in documentation code blocks) that must
-        # not be clobbered.
-        new = re.sub(re.escape(start) + r".*?" + re.escape(end), lambda _: block, text, count=1, flags=re.S)
-        open(readme, "w", encoding="utf-8").write(new)
-        print(f"Updated {readme} between markers.")
-        PY
+        python3 "$ACTION_PATH/readme-embed.py"
 
     - name: Commit generated charts
       if: ${{ inputs.commit == 'true' && steps.render.outputs.changed == 'true' }}
