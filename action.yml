@@ -61,6 +61,9 @@ outputs:
   dark:
     description: 'Path to the newest dark-theme SVG, if a dark theme was rendered.'
     value: ${{ steps.render.outputs.dark }}
+  png:
+    description: 'Path to the generated PNG chart (single file, rendered from the first configured theme).'
+    value: ${{ steps.render.outputs.png }}
 
 runs:
   using: 'composite'
@@ -137,6 +140,7 @@ runs:
           --type "$TYPE" \
           --width "$WIDTH" \
           --output "$TMP/$probe.svg" \
+          --png "$TMP/star-history.png" \
           --signature "$TMP/new.sig"
 
         if [ ! -s "$TMP/$probe.svg" ]; then
@@ -146,10 +150,23 @@ runs:
 
         newsig="$(cat "$TMP/new.sig")"
         oldsig="$(cat "$SIGFILE" 2>/dev/null || true)"
-        if [ -n "$oldsig" ] && [ "$newsig" = "$oldsig" ]; then
-          echo "No star history change (signature unchanged); keeping existing charts."
+
+        # Backward compat: a repo upgrading from the old timestamped naming has a
+        # matching signature but no stable files yet. Only skip when the data is
+        # unchanged AND every stable target already exists.
+        have_stable=true
+        for theme in "${themes[@]}"; do
+          [ -f "$OUTPUT_DIR/star-history-$theme.svg" ] || have_stable=false
+        done
+        [ -f "$OUTPUT_DIR/star-history.png" ] || have_stable=false
+
+        if [ -n "$oldsig" ] && [ "$newsig" = "$oldsig" ] && [ "$have_stable" = true ]; then
+          echo "No star history change and stable files present; keeping existing charts."
           echo "changed=false" >> "$GITHUB_OUTPUT"
           exit 0
+        fi
+        if [ "$have_stable" != true ]; then
+          echo "Stable chart files missing (first run or upgrade from timestamped naming); regenerating."
         fi
 
         # Changed: render the remaining themes too.
@@ -168,22 +185,29 @@ runs:
           fi
         done
 
-        # Changed: write timestamped files, remove the previous ones per theme.
-        TS="$(date -u +%Y%m%d%H%M%S)"
+        # Changed: write stable, overwrite-in-place filenames. External
+        # consumers (npm, pub.dev) freeze the README URL, so a moving filename
+        # 404s once the old file is deleted. A fixed path is always valid; the
+        # main-repo README still refreshes because a push purges GitHub's image
+        # cache.
         light=""
         dark=""
         files=""
         for theme in "${themes[@]}"; do
-          final="$OUTPUT_DIR/star-history-$theme-$TS.svg"
+          final="$OUTPUT_DIR/star-history-$theme.svg"
           cp "$TMP/$theme.svg" "$final"
-          find "$OUTPUT_DIR" -maxdepth 1 -name "star-history-$theme-*.svg" \
-            ! -name "star-history-$theme-$TS.svg" -delete 2>/dev/null || true
           [ "$theme" = "light" ] && light="$final"
           [ "$theme" = "dark" ] && dark="$final"
           files="${files}${final}"$'\n'
         done
         # If no explicit "light" theme, use the first theme as the <img> source.
-        [ -z "$light" ] && light="$OUTPUT_DIR/star-history-${themes[0]}-$TS.svg"
+        [ -z "$light" ] && light="$OUTPUT_DIR/star-history-${themes[0]}.svg"
+
+        # Single PNG (follows the probe/first theme) for registries that cannot
+        # render SVG.
+        png="$OUTPUT_DIR/star-history.png"
+        cp "$TMP/star-history.png" "$png"
+        files="${files}${png}"$'\n'
 
         # Persist the new signature so the next run can detect no-change.
         cp "$TMP/new.sig" "$SIGFILE"
@@ -191,6 +215,7 @@ runs:
         echo "changed=true" >> "$GITHUB_OUTPUT"
         echo "light=$light" >> "$GITHUB_OUTPUT"
         echo "dark=$dark" >> "$GITHUB_OUTPUT"
+        echo "png=$png" >> "$GITHUB_OUTPUT"
         {
           echo "files<<STAR_HISTORY_EOF"
           printf '%s' "$files"
