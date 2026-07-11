@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" role="img" aria-label="Star history placeholder">
-  <rect width="800" height="500" fill="#ffffff"/>
-  <rect x="0.5" y="0.5" width="799" height="499" fill="none" stroke="#d0d7de"/>
-  <text x="400" y="240" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" fill="#57606a">Star History</text>
-  <text x="400" y="278" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" fill="#8c959f">Chart appears here after the action's first run.</text>
-</svg>

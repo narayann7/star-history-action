@@ -2,8 +2,3 @@ node_modules/
 renderer/out/
 *.log
 .DS_Store
-
-# This repo demos with a static placeholder; do not commit generated charts.
-assets/star-history/star-history-*.svg
-assets/star-history/star-history.png
-assets/star-history/.star-history.sig

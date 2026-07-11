@@ -22,12 +22,12 @@ The star-history maintainer pointed to this approach in the tracking issue, for 
 
 ## Demo
 
-Below is the static placeholder this repo ships. On a consumer repo the action replaces the block between the marker comments with a real chart on its first run and keeps it current on a schedule. For a live example, see a repo that uses the action, such as [fossui/fossui](https://github.com/fossui/fossui).
+This repo runs the action on itself; the chart below is the real, self-updating output. On any repo the action replaces the block between the marker comments with a live chart on its first run and keeps it current on a schedule.
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/placeholder-dark.svg">
-  <img alt="Star history" src="assets/star-history/placeholder-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light.svg">
 </picture>
 <!-- star-history:end -->
 
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: narayann7/star-history-action@v1
         with:
-          repos: fossui/fossui   # or ${{ github.repository }} for the current repo
+          repos: ${{ github.repository }}   # the current repo; or a list like owner/repo,owner/repo2
 ```
 
 > **Recommended cadence: a scheduled run every 3h, 6h, or once a day.** Star

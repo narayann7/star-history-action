@@ -24,9 +24,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: narayann7/star-history-action@v1
         with:
+          # Chart this repo itself and keep its README chart current.
           repos: ${{ github.repository }}
-          # This repo demos with a static placeholder, so the scheduled run only
-          # proves the render works end to end; it does not commit a chart or
-          # rewrite the README.
-          commit: 'false'
-          update-readme: 'false'
