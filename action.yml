@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ${{ github.repository }}
   output-dir:
-    description: 'Directory where generated SVGs are written.'
+    description: 'Directory where generated chart files (per-theme SVGs and a single PNG) are written.'
     required: false
     default: 'assets/star-history'
   token:
@@ -54,7 +54,7 @@ inputs:
 
 outputs:
   files:
-    description: 'Newline-separated list of generated SVG file paths.'
+    description: 'Newline-separated list of generated chart file paths (SVGs and the PNG).'
     value: ${{ steps.render.outputs.files }}
   changed:
     description: 'Whether the chart changed this run (true/false).'

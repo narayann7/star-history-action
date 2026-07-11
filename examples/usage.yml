@@ -36,3 +36,7 @@ jobs:
           # token defaults to the automatic Actions token; override with a PAT
           # secret if the default lacks stargazers access:
           # token: ${{ secrets.GH_PAT }}
+          # readme-format defaults to 'picture' (SVG, GitHub dark/light). If this
+          # repo is published to npm or pub.dev, use 'png' so the chart renders
+          # there too (those sites strip <picture> and do not render SVG):
+          # readme-format: png

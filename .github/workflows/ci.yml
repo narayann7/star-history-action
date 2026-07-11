@@ -34,7 +34,10 @@ jobs:
           renderer/node_modules/.bin/tsx renderer/render.ts \
             --repos "${{ github.repository }}" \
             --theme light --type Date --width 800 \
-            --output /tmp/smoke.svg
+            --output /tmp/smoke.svg \
+            --png /tmp/smoke.png
           test -s /tmp/smoke.svg
           grep -qi '<svg' /tmp/smoke.svg
+          test -s /tmp/smoke.png
+          head -c 4 /tmp/smoke.png | od -An -tx1 | grep -qi '89 50 4e 47'
           echo "renderer smoke test OK"

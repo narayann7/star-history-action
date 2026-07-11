@@ -100,11 +100,18 @@ current chart and updates it when the chart changes:
 <!-- star-history:end -->
 ```
 
-The filename carries a UTC timestamp that changes only when the chart changes.
-That is deliberate: a new filename forces GitHub's image cache to fetch the
-fresh chart instead of showing a stale one, and the action deletes the previous
-timestamped files so the repo does not accumulate them. The `<picture>` block
-also swaps the dark chart in automatically on GitHub's dark theme.
+Files use stable names (`star-history-light.svg`, `star-history-dark.svg`,
+`star-history.png`) and are overwritten in place. A fixed path matters for
+package registries: npm and pub.dev freeze a README's image URL, so a moving
+filename would 404 once the old file is deleted. On GitHub the chart still
+refreshes, because a push purges GitHub's image cache for that path. The
+`<picture>` block also swaps the dark chart in automatically on GitHub's dark
+theme.
+
+If your README is also published to npm or pub.dev, set `readme-format: png`.
+Those sites strip `<picture>` and do not render SVG, so the action instead
+writes a plain-markdown PNG at an absolute `raw.githubusercontent.com` URL,
+which they can display. The tradeoff is a single PNG with no dark/light swap.
 
 If you would rather manage the embed yourself, set `update-readme: false` and
 point a plain `<img>` at whatever the action writes.
@@ -114,17 +121,18 @@ point a plain `<img>` at whatever the action writes.
 | input | default | description |
 |---|---|---|
 | `repos` | current repo | Comma-separated `owner/repo` list. |
-| `output-dir` | `assets/star-history` | Where the SVGs are written. |
+| `output-dir` | `assets/star-history` | Where the chart files (SVGs and the PNG) are written. |
 | `token` | `${{ github.token }}` | Token for the stargazers API. |
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
 | `update-readme` | `true` | Rewrite the README between the `star-history` marker comments to point at the newest chart. |
 | `readme` | `README.md` | Path to the README to update. |
+| `readme-format` | `picture` | Embed style: `picture` (SVG `<picture>`, GitHub dark/light) or `png` (plain-markdown absolute-URL PNG that also renders on npm and pub.dev). |
 | `commit` | `true` | Commit and push the generated files. |
 | `commit-message` | `chore: update star history [skip ci]` | Message used when committing. |
 
-Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest chart paths).
+Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest SVG paths), and `png` (the PNG path).
 
 ## Triggers
 

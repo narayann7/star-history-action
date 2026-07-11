@@ -102,7 +102,12 @@ How star-history-action works, end to end.
    ┌─────────────────────────────┐
    │ fix JSDOM casing + svgo      │
    │ optimize ──► write .svg      │
-   └─────────────────────────────┘
+   └──────────────┬──────────────┘
+                  ▼
+   ┌─────────────────────────────┐
+   │ if --png: strip sketch      │   resvg panics on the feTurbulence/
+   │ filter, resvg ──► write .png│   feDisplacementMap filter; the SVG
+   └─────────────────────────────┘   keeps it, only the PNG drops it
 ```
 
 ## 4. Change detection (why it does not commit every run)
@@ -123,9 +128,10 @@ How star-history-action works, end to end.
                           ▼              ▼   or day rolled over)
               ┌────────────────┐   ┌──────────────────────────────┐
               │ changed=false  │   │ render remaining themes       │
-              │ keep files     │   │ new timestamp <YYYYMMDDHHMMSS>│
-              │ NO commit      │   │ delete old timestamped files  │
-              └────────────────┘   │ write new .star-history.sig   │
+              │ keep files     │   │ write stable star-history-    │
+              │ NO commit      │   │ <theme>.svg + star-history.png│
+              └────────────────┘   │ (overwrite in place)          │
+                                   │ write new .star-history.sig   │
                                    │ changed=true                  │
                                    └──────────────────────────────┘
 ```
@@ -155,7 +161,7 @@ granularity) instead means a commit only happens when the chart really moves.
 | `renderer/render.ts` | wrapper that drives the vendored renderer and emits the signature |
 | `renderer/vendor/shared` | star-history's own chart code (MIT, pinned commit) |
 | `.star-history.sig` | stored data signature, gates commits |
-| `star-history-<theme>-<ts>.svg` | committed chart; timestamp busts GitHub's image cache |
+| `star-history-<theme>.svg`, `star-history.png` | committed charts; stable names, overwritten in place |
 | marker comments | where the action writes the `<picture>` block in the README |
 ```
 
