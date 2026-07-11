@@ -23,3 +23,8 @@ jobs:
       - uses: narayann7/star-history-action@v1
         with:
           repos: ${{ github.repository }}
+          # This repo demos with a static placeholder, so the scheduled run only
+          # proves the render works end to end; it does not commit a chart or
+          # rewrite the README.
+          commit: 'false'
+          update-readme: 'false'

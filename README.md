@@ -12,14 +12,22 @@ The access GitHub still allows is a repo's **owner or collaborator** reading **t
 
 The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so the output matches star-history.com without a headless browser or a third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
+## Endorsement
+
+The star-history maintainer pointed to this approach in the tracking issue, for anyone who would rather not hand a fine-grained token to the star-history API:
+
+> If you are not comfortable to share your fine-grained token with star-history API, then @narayann7's method is good (the tradeoff is it's a static image, though you can configure a cron to refresh it periodically).
+>
+> star-history/star-history#539: https://github.com/star-history/star-history/issues/539#issuecomment-4896077391
+
 ## Demo
 
-This action charting **its own repository** on a 6-hour schedule, the normal way a consumer would use it (via `narayann7/star-history-action@v1` and the default `github.token`). The action maintains this block itself through the marker comments below, and it fills in as the repo gains stars.
+Below is the static placeholder this repo ships. On a consumer repo the action replaces the block between the marker comments with a real chart on its first run and keeps it current on a schedule. For a live example, see a repo that uses the action, such as [fossui/fossui](https://github.com/fossui/fossui).
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260711025746.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260711025746.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/placeholder-dark.svg">
+  <img alt="Star history" src="assets/star-history/placeholder-light.svg">
 </picture>
 <!-- star-history:end -->
 
