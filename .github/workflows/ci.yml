@@ -41,3 +41,16 @@ jobs:
           test -s /tmp/smoke.png
           head -c 4 /tmp/smoke.png | od -An -tx1 | tr -d ' \n' | grep -qi '89504e47'
           echo "renderer smoke test OK"
+
+      # Exercise the full shell flow (render-charts.sh + readme-embed.py) the way
+      # action.yml runs it: change detection, stable filenames, PNG, backward
+      # compat regeneration, both embed formats, and commit-ability.
+      - name: Integration test
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: bash test-integration.sh
+
+      # Static-string checks: stable naming, no timestamped output, png wiring.
+      - name: Stable-name checks
+        run: bash test-stable-names.sh
