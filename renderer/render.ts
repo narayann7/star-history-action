@@ -13,10 +13,11 @@
  * Usage:
  *   GITHUB_TOKEN=<t> tsx render.ts --repos owner/repo[,owner/repo2] \
  *     --theme light|dark --type Date|Timeline --width <px> --output <file> \
- *     [--signature <file>]
+ *     [--png <file>] [--signature <file>]
  */
 import { JSDOM } from "jsdom";
 import { optimize } from "svgo";
+import { Resvg } from "@resvg/resvg-js";
 import XYChart from "./vendor/shared/packages/xy-chart";
 import { convertDataToChartData, getRepoData } from "./vendor/shared/common/chart";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -186,6 +187,34 @@ async function main() {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, optimized, "utf-8");
   process.stderr.write(`Wrote ${output} (${optimized.length} bytes)\n`);
+
+  // Optional PNG rasterization for consumers that cannot render SVG (npm,
+  // pub.dev). raw.githubusercontent serves .svg as text/plain (will not render
+  // off-GitHub) and pub.dev's sanitizer drops <picture>; a PNG sidesteps both.
+  if (args.png) {
+    // resvg panics on the feTurbulence/feDisplacementMap filter star-history
+    // uses for its hand-sketched look (assertion failure in its filter code).
+    // The filter is purely decorative, so strip it before rasterizing. The SVG
+    // file was already written above with the filter intact, so only the PNG
+    // loses it. Re-serialize + re-optimize the now-filterless DOM.
+    svg.querySelectorAll("filter").forEach((el) => el.remove());
+    svg.querySelectorAll("[filter]").forEach((el) => el.removeAttribute("filter"));
+    const pngSvg = optimize(fixJsdomSvgCasing(svg.outerHTML), { multipass: true }).data;
+    const resvg = new Resvg(pngSvg, {
+      // Chart already draws an opaque background (transparent:false), but set an
+      // explicit background so the PNG never ends up with an alpha fringe.
+      background: theme === "dark" ? "#0d1117" : "#ffffff",
+      // The embedded @font-face <style> was stripped above; fall back to system
+      // fonts so chart labels still rasterize with text.
+      font: { loadSystemFonts: true },
+      // Render at 2x the logical width for a crisp result on hi-dpi displays.
+      fitTo: { mode: "width", value: width * 2 },
+    });
+    const pngBuf = resvg.render().asPng();
+    mkdirSync(dirname(args.png), { recursive: true });
+    writeFileSync(args.png, pngBuf);
+    process.stderr.write(`Wrote ${args.png} (${pngBuf.length} bytes)\n`);
+  }
 }
 
 main().catch((err) => {
