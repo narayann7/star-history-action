@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Local integration test for the composite action's shell logic.
 #
-# Runs the SAME render-charts.sh and readme-embed.py that action.yml calls, so
+# Runs the SAME scripts/render-charts.sh and readme-embed.py that action.yml calls, so
 # it exercises change detection, stable filenames, the PNG, backward-compat
 # regeneration, and both README embed formats without a real GitHub Actions run.
 #
@@ -20,7 +20,7 @@ fail() { echo "  FAIL: $1"; exit 1; }
 render() {  # $1=OUTPUT_DIR  $2=GITHUB_OUTPUT file
   GITHUB_TOKEN="$GITHUB_TOKEN" REPOS="$REPO" OUTPUT_DIR="$1" TYPE=Date \
   THEMES="light,dark" WIDTH=800 ACTION_PATH="$ACTION_PATH" GITHUB_OUTPUT="$2" \
-  bash "$ACTION_PATH/render-charts.sh" >/dev/null 2>&1
+  bash "$ACTION_PATH/scripts/render-charts.sh" >/dev/null 2>&1
 }
 
 echo "== Scenario A: fresh repo (first run) =="
@@ -55,7 +55,7 @@ RD="$(mktemp).md"; printf '# X\n<!-- star-history:start -->\nOLD\n<!-- star-hist
 README="$RD" LIGHT="assets/star-history/star-history-light.svg" \
 DARK="assets/star-history/star-history-dark.svg" PNG="assets/star-history/star-history.png" \
 README_FORMAT=png REPO="owner/repo" BRANCH=main OUTPUT_DIR="assets/star-history" \
-python3 "$ACTION_PATH/readme-embed.py" >/dev/null
+python3 "$ACTION_PATH/scripts/readme-embed.py" >/dev/null
 grep -q 'https://raw.githubusercontent.com/owner/repo/main/assets/star-history/star-history.png' "$RD" && pass "absolute raw png url" || fail "no raw png url"
 grep -q '!\[Star History\]' "$RD"                && pass "plain markdown image" || fail "not plain markdown"
 grep -q '<picture>' "$RD" && fail "png format used <picture>" || pass "no <picture> in png block"
@@ -65,7 +65,7 @@ RE="$(mktemp).md"; printf '# X\n<!-- star-history:start -->\nOLD\n<!-- star-hist
 README="$RE" LIGHT="assets/star-history/star-history-light.svg" \
 DARK="assets/star-history/star-history-dark.svg" PNG="assets/star-history/star-history.png" \
 README_FORMAT=picture REPO="owner/repo" BRANCH=main OUTPUT_DIR="assets/star-history" \
-python3 "$ACTION_PATH/readme-embed.py" >/dev/null
+python3 "$ACTION_PATH/scripts/readme-embed.py" >/dev/null
 grep -q '<picture>' "$RE"                        && pass "<picture> block" || fail "no <picture>"
 grep -q 'srcset="assets/star-history/star-history-dark.svg"' "$RE" && pass "relative dark svg" || fail "no relative dark svg"
 

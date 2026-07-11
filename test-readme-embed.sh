@@ -12,7 +12,7 @@ run() {  # $1=format
   DARK="assets/star-history/star-history-dark.svg" \
   PNG="assets/star-history/star-history.png" \
   README_FORMAT="$1" REPO="owner/repo" BRANCH="main" OUTPUT_DIR="assets/star-history" \
-  python3 ./readme-embed.py
+  python3 ./scripts/readme-embed.py
   cat "$rd"
 }
 

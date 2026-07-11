@@ -94,7 +94,7 @@ runs:
         THEMES: ${{ inputs.themes }}
         WIDTH: ${{ inputs.width }}
         ACTION_PATH: ${{ github.action_path }}
-      run: bash "$ACTION_PATH/render-charts.sh"
+      run: bash "$ACTION_PATH/scripts/render-charts.sh"
 
     - name: Update README embed
       if: ${{ inputs.update-readme == 'true' && steps.render.outputs.changed == 'true' }}
@@ -111,7 +111,7 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        python3 "$ACTION_PATH/readme-embed.py"
+        python3 "$ACTION_PATH/scripts/readme-embed.py"
 
     - name: Commit generated charts
       if: ${{ inputs.commit == 'true' && steps.render.outputs.changed == 'true' }}
