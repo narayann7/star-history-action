@@ -1,13 +1,12 @@
 # Dogfood: this repo runs its own published action on itself, the normal way a
 # consumer would. Charting our own repo, so the default github.token is enough
-# (no PAT). Scheduled cadence, a manual button, plus a run on every push to main.
+# (no PAT). Runs on a new star and on manual dispatch. Note: with no schedule,
+# the chart will not refresh on quiet days or pick up unstars.
 name: Star History
 
 on:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '0 */6 * * *'
+  watch:
+    types: [started]   # dogfood: refresh the chart when this repo gets a new star
   workflow_dispatch:
 
 permissions:

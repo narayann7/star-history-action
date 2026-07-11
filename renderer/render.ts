@@ -20,9 +20,23 @@ import { optimize } from "svgo";
 import { Resvg } from "@resvg/resvg-js";
 import XYChart from "./vendor/shared/packages/xy-chart";
 import { convertDataToChartData, getRepoData } from "./vendor/shared/common/chart";
-import { writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { fetchGoogleFontFiles } from "./googleFont";
+
+// Comic Neue (SIL OFL) is vendored under fonts/ and pinned for PNG rasterization
+// so the PNG renders the same handwriting-style text on every machine, instead
+// of resvg substituting whatever system font the build host happens to have.
+// The chart SVG asks for font-family "xkcd" (that font is stripped and its data
+// blanked, see fontData.ts); resvg maps the missing family to this default.
+const PNG_FONT_FILES = [
+  fileURLToPath(new URL("./fonts/ComicNeue-Regular.ttf", import.meta.url)),
+  fileURLToPath(new URL("./fonts/ComicNeue-Bold.ttf", import.meta.url)),
+];
+const PNG_FONT_FAMILY = "Comic Neue";
 
 // star-history fetches at most this many pages of stargazers per repo.
 const MAX_REQUEST_AMOUNT = 16;
@@ -131,15 +145,19 @@ async function main() {
     // final "now" point with a full timestamp (seconds), which would otherwise
     // change the signature on every run. Truncating to the day makes it stable
     // within a day and only change on real star movement or a day rollover.
-    const sigInput = JSON.stringify(
-      repoData.map((r: any) => ({
+    // Include the requested font so changing only the font (no star movement,
+    // same day) still invalidates the cache and forces a PNG re-render.
+    const sigFont = (args["font-family"] || "").trim();
+    const sigInput = JSON.stringify({
+      font: sigFont,
+      repos: repoData.map((r: any) => ({
         repo: r.repo,
         records: r.starRecords.map((x: any) => ({
           d: String(x.date).split(" ")[0],
           c: x.count,
         })),
-      }))
-    );
+      })),
+    });
     const sig = createHash("sha256").update(sigInput).digest("hex");
     mkdirSync(dirname(args.signature), { recursive: true });
     writeFileSync(args.signature, sig, "utf-8");
@@ -200,13 +218,44 @@ async function main() {
     svg.querySelectorAll("filter").forEach((el) => el.remove());
     svg.querySelectorAll("[filter]").forEach((el) => el.removeAttribute("filter"));
     const pngSvg = optimize(fixJsdomSvgCasing(svg.outerHTML), { multipass: true }).data;
+    // Default to the vendored Comic Neue. If the user asked for a Google font,
+    // download it and use that instead; on any failure keep the vendored font
+    // so a network hiccup never fails the run.
+    let fontFiles = PNG_FONT_FILES;
+    let fontFamily = PNG_FONT_FAMILY;
+    let fontDir: string | null = null;
+    const requestedFont = (args["font-family"] || "").trim();
+    if (requestedFont) {
+      try {
+        fontDir = mkdtempSync(join(tmpdir(), "sh-font-"));
+        // fetched.family is the font's real internal name, read from its name
+        // table, so resvg's defaultFontFamily lookup matches the downloaded face
+        // instead of assuming the Google family string equals the compiled name.
+        const fetched = await fetchGoogleFontFiles(requestedFont, fontDir);
+        fontFiles = fetched.files;
+        fontFamily = fetched.family;
+        process.stderr.write(
+          `Using Google font "${requestedFont}" as "${fetched.family}" (${fetched.files.length} file(s))\n`
+        );
+      } catch (e) {
+        process.stderr.write(
+          `Google font "${requestedFont}" unavailable (${e}); falling back to ${PNG_FONT_FAMILY}\n`
+        );
+      }
+    }
     const resvg = new Resvg(pngSvg, {
       // Chart already draws an opaque background (transparent:false), but set an
       // explicit background so the PNG never ends up with an alpha fringe.
       background: theme === "dark" ? "#0d1117" : "#ffffff",
-      // The embedded @font-face <style> was stripped above; fall back to system
-      // fonts so chart labels still rasterize with text.
-      font: { loadSystemFonts: true },
+      // The embedded @font-face <style> was stripped above. Pin the vendored
+      // Comic Neue font (loadSystemFonts:false) so the PNG is byte-stable across
+      // build machines; the chart's requested "xkcd" family is unavailable, so
+      // resvg falls back to defaultFontFamily below.
+      font: {
+        loadSystemFonts: false,
+        fontFiles,
+        defaultFontFamily: fontFamily,
+      },
       // Render at 2x the logical width for a crisp result on hi-dpi displays.
       fitTo: { mode: "width", value: width * 2 },
     });
@@ -214,6 +263,10 @@ async function main() {
     mkdirSync(dirname(args.png), { recursive: true });
     writeFileSync(args.png, pngBuf);
     process.stderr.write(`Wrote ${args.png} (${pngBuf.length} bytes)\n`);
+
+    // Remove the downloaded-font temp dir so repeated runs on a long-lived
+    // (self-hosted) runner do not accumulate orphaned dirs in the OS tmpdir.
+    if (fontDir) rmSync(fontDir, { recursive: true, force: true });
   }
 }
 

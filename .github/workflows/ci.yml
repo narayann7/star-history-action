@@ -54,3 +54,20 @@ jobs:
       # Static-string checks: stable naming, no timestamped output, png wiring.
       - name: Stable-name checks
         run: bash tests/test-stable-names.sh
+
+      # Google Fonts fetch module: downloads a real TTF, reads its family name,
+      # and checks the throw-on-failure paths. Network only, no token needed.
+      - name: Font-fetch unit test
+        run: renderer/node_modules/.bin/tsx renderer/googleFont.test.ts
+
+      # font-family end to end: PNG renders with a Google font, a bad name falls
+      # back to the bundled font without failing, empty input skips the fetch,
+      # and the font is part of the change signature.
+      - name: Font feature tests
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bash tests/test-font.sh
+          bash tests/test-font-plumbing.sh

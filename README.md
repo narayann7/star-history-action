@@ -22,7 +22,7 @@ The star-history maintainer pointed to this approach in the tracking issue, for 
 
 ## Demo
 
-This repo runs the action on itself; the chart below is the real, self-updating output. On any repo the action replaces the block between the marker comments with a live chart on its first run and keeps it current on a schedule.
+This repo runs the action on itself; the chart below is the real, self-updating output. On any repo the action replaces the block between the marker comments with a live chart on its first run and keeps it current on whatever triggers you configure. This repo's own chart refreshes when the repo gains a star.
 
 <!-- star-history:start -->
 <picture>
@@ -34,7 +34,7 @@ This repo runs the action on itself; the chart below is the real, self-updating 
 ## How it works
 
 ```
-  schedule / manual dispatch
+  schedule / new star / manual dispatch
              │
              ▼
   ┌────────────────────────────────────┐
@@ -64,6 +64,8 @@ name: Star History
 on:
   schedule:
     - cron: '0 */6 * * *'   # every 6 hours; see the interval table below
+  watch:
+    types: [started]        # optional: also refresh right after a new star
   workflow_dispatch:
 
 permissions:
@@ -134,6 +136,7 @@ point a plain `<img>` at whatever the action writes.
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
+| `font-family` | `` | Optional [Google Fonts](https://fonts.google.com/) family applied to the PNG chart (e.g. `Patrick Hand`). Empty uses the bundled Comic Neue. |
 | `update-readme` | `true` | Rewrite the README between the `star-history` marker comments to point at the newest chart. |
 | `readme` | `README.md` | Path to the README to update. |
 | `readme-format` | `picture` | Embed style: `picture` (SVG `<picture>`, GitHub dark/light) or `png` (plain-markdown absolute-URL PNG that also renders on npm and pub.dev). |
@@ -142,11 +145,16 @@ point a plain `<img>` at whatever the action writes.
 
 Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest SVG paths), and `png` (the PNG path).
 
+### Notes
+
+> **Fonts:** GitHub strips `@font-face` from SVGs it serves through `<img>`/`<picture>`, so a custom font only renders in the PNG output (`readme-format: png`), not the SVG. Set `font-family` to any Google Fonts name to restyle the PNG. The action downloads the font, reads its real internal name so it renders even when that differs from the family string, and applies it. If the download fails, it falls back to the bundled Comic Neue and the run still succeeds. Non-Latin families (for example `Noto Sans SC`) work too, though single-weight fonts render the title in the regular weight since no bold face exists.
+
 ## Triggers
 
-The recommended workflow uses two triggers:
+The recommended workflow uses these triggers:
 
-- **schedule** runs the chart on a fixed cadence. This is the one you want.
+- **schedule** runs the chart on a fixed cadence. This is the one you want, and it is strongly recommended: only the schedule refreshes the chart's time axis on days with no star change, and only it can pick up unstars. A repo that leaves it out (as this one does, running on `watch` alone to keep the demo minimal) accepts that its chart will not refresh on quiet days or reflect an unstar.
+- **watch / started** (optional) runs the chart right after someone stars the repo, so a new star shows up without waiting for the next scheduled run. It fires on new stars only, never on unstars, so it supplements the schedule rather than replacing it. Mind the churn: because change-detection commits whenever the star count moves, stars that arrive spread out over time each get their own run and their own commit, while stars that land in a tight burst coalesce (the `concurrency` group keeps the latest run and cancels the superseded ones). Either way every run spends CI minutes, so a repo that gets stars in volume should prefer the schedule alone. For this trigger to fire, the workflow file must be on your repository's default branch.
 - **workflow_dispatch** gives you a manual run button for the first run and ad-hoc refreshes.
 
 A `push` trigger is also technically possible but **not recommended**: it re-runs the job on every commit, which wastes CI minutes and adds commit churn without meaningfully fresher data.

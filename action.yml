@@ -31,6 +31,10 @@ inputs:
     description: 'Image width in pixels.'
     required: false
     default: '800'
+  font-family:
+    description: 'Optional Google Fonts family applied to the PNG chart (e.g. "Patrick Hand"). Empty uses the bundled Comic Neue. Affects the PNG only; GitHub strips fonts from README-embedded SVGs regardless.'
+    required: false
+    default: ''
   update-readme:
     description: 'Rewrite the README between the star-history marker comments to point at the newest chart. Requires the markers to exist.'
     required: false
@@ -93,6 +97,7 @@ runs:
         TYPE: ${{ inputs.type }}
         THEMES: ${{ inputs.themes }}
         WIDTH: ${{ inputs.width }}
+        FONT_FAMILY: ${{ inputs.font-family }}
         ACTION_PATH: ${{ github.action_path }}
       run: bash "$ACTION_PATH/scripts/render-charts.sh"
 

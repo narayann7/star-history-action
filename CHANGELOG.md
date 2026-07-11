@@ -4,6 +4,29 @@ All notable changes to this action are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-07-12
+
+### Added
+- `font-family` input. Set it to any Google Fonts family (for example
+  `Patrick Hand`) and the renderer downloads that font at run time and applies
+  it to the PNG chart. The action reads the font's real internal name so it
+  matches even when that differs from the family string, and non-Latin families
+  such as `Noto Sans SC` work. Empty input keeps the bundled Comic Neue with no
+  network call, and any download failure falls back to Comic Neue without
+  failing the run. This affects the PNG only, since GitHub strips `@font-face`
+  from README-embedded SVGs.
+- Optional `watch: types: [started]` trigger, documented alongside the cron
+  schedule and `workflow_dispatch`, so a chart can refresh right after a new
+  star. It supplements the schedule rather than replacing it: `watch` fires on
+  new stars only, never on unstars, and does not refresh the time axis on quiet
+  days.
+
+### Compatibility
+- The change-detection signature now includes the requested font, so changing
+  only `font-family` invalidates the cache and re-renders. As a side effect the
+  signature format changed, so the first run after upgrading regenerates the
+  chart once even when the star count is unchanged.
+
 ## [1.0.1] - 2026-07-11
 
 ### Added
@@ -51,5 +74,6 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Triggers for push, cron schedule, and manual dispatch, with a documented
   own-repos scope and PAT guidance for repos the default token cannot read.
 
+[1.0.2]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.2
 [1.0.1]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.1
 [1.0.0]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.0

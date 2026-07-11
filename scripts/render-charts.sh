@@ -12,6 +12,7 @@
 #   TYPE          Date | Timeline
 #   THEMES        comma-separated theme names (light,dark)
 #   WIDTH         image width in px
+#   FONT_FAMILY   optional Google Fonts family for the PNG (empty = bundled font)
 #   ACTION_PATH   action root (contains renderer/)
 #   GITHUB_OUTPUT file to append changed/light/dark/png/files to
 set -euo pipefail
@@ -64,6 +65,7 @@ echo "Rendering $REPOS ($probe) as change probe"
   --width "$WIDTH" \
   --output "$TMP/$probe.svg" \
   --png "$TMP/star-history.png" \
+  --font-family "${FONT_FAMILY:-}" \
   --signature "$TMP/new.sig"
 
 if [ ! -s "$TMP/$probe.svg" ]; then
