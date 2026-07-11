@@ -8,7 +8,7 @@ Keep a self-updating star history chart in **your own** repository's README.
 
 On June 30, 2026 GitHub limited its stargazers endpoint to a repo's own admins and collaborators. Since then the hosted `api.star-history.com/svg` badge renders blank for many repos, so live star-history README badges stopped working.
 
-The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits the SVG into your repo so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
+The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits it into your repo (SVG, plus a PNG for package registries) so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
 
 The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so the output matches star-history.com without a headless browser or a third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
@@ -102,8 +102,8 @@ current chart and updates it when the chart changes:
 ```html
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706120000.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706120000.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light.svg">
 </picture>
 <!-- star-history:end -->
 ```
