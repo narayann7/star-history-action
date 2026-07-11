@@ -39,5 +39,5 @@ jobs:
           test -s /tmp/smoke.svg
           grep -qi '<svg' /tmp/smoke.svg
           test -s /tmp/smoke.png
-          head -c 4 /tmp/smoke.png | od -An -tx1 | grep -qi '89 50 4e 47'
+          head -c 4 /tmp/smoke.png | od -An -tx1 | tr -d ' \n' | grep -qi '89504e47'
           echo "renderer smoke test OK"

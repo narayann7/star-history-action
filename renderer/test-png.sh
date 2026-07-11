@@ -17,8 +17,9 @@ node_modules/.bin/tsx render.ts \
 test -s "$OUT/chart.svg"
 grep -qi '<svg' "$OUT/chart.svg"
 
-# PNG written and starts with the PNG magic bytes (\x89 P N G).
+# PNG written and starts with the PNG magic bytes (\x89 P N G). Squeeze
+# whitespace first: od spacing differs between BSD (macOS) and GNU (Linux).
 test -s "$OUT/chart.png"
-head -c 4 "$OUT/chart.png" | od -An -tx1 | grep -qi '89 50 4e 47'
+head -c 4 "$OUT/chart.png" | od -An -tx1 | tr -d ' \n' | grep -qi '89504e47'
 
 echo "PNG smoke test OK"
