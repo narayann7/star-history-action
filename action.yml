@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ${{ github.repository }}
   output-dir:
-    description: 'Directory where generated SVGs are written.'
+    description: 'Directory where generated chart files (per-theme SVGs and a single PNG) are written.'
     required: false
     default: 'assets/star-history'
   token:
@@ -39,6 +39,10 @@ inputs:
     description: 'Path to the README to update when update-readme is true.'
     required: false
     default: 'README.md'
+  readme-format:
+    description: 'README embed style: "picture" (SVG <picture>, GitHub dark/light) or "png" (plain-markdown absolute-URL PNG, renders on npm/pub.dev).'
+    required: false
+    default: 'picture'
   commit:
     description: 'Whether to commit and push the generated files.'
     required: false
@@ -50,7 +54,7 @@ inputs:
 
 outputs:
   files:
-    description: 'Newline-separated list of generated SVG file paths.'
+    description: 'Newline-separated list of generated chart file paths (SVGs and the PNG).'
     value: ${{ steps.render.outputs.files }}
   changed:
     description: 'Whether the chart changed this run (true/false).'
@@ -61,6 +65,9 @@ outputs:
   dark:
     description: 'Path to the newest dark-theme SVG, if a dark theme was rendered.'
     value: ${{ steps.render.outputs.dark }}
+  png:
+    description: 'Path to the generated PNG chart (single file, rendered from the first configured theme).'
+    value: ${{ steps.render.outputs.png }}
 
 runs:
   using: 'composite'
@@ -87,115 +94,7 @@ runs:
         THEMES: ${{ inputs.themes }}
         WIDTH: ${{ inputs.width }}
         ACTION_PATH: ${{ github.action_path }}
-      run: |
-        set -euo pipefail
-
-        if [ -z "${GITHUB_TOKEN:-}" ]; then
-          echo "::error::token input is empty. Provide a GitHub token with access to the target repos."
-          exit 1
-        fi
-
-        R="$ACTION_PATH/renderer"
-        mkdir -p "$OUTPUT_DIR"
-        TMP="$(mktemp -d)"
-
-        # Collect trimmed, validated theme names. Themes are used in file paths
-        # and delete globs, so restrict them to a safe charset to prevent path
-        # traversal or glob collisions.
-        themes=()
-        IFS=',' read -ra THEME_LIST <<< "$THEMES"
-        for raw_theme in "${THEME_LIST[@]}"; do
-          # Trim leading/trailing whitespace with pure bash (no word splitting).
-          theme="${raw_theme#"${raw_theme%%[![:space:]]*}"}"
-          theme="${theme%"${theme##*[![:space:]]}"}"
-          [ -z "$theme" ] && continue
-          if ! [[ "$theme" =~ ^[a-z0-9]+$ ]]; then
-            echo "::error::Invalid theme name '$theme'. Themes must match [a-z0-9]."
-            exit 1
-          fi
-          themes+=("$theme")
-        done
-
-        if [ "${#themes[@]}" -eq 0 ]; then
-          echo "::error::No valid themes in input '$THEMES'."
-          exit 1
-        fi
-
-        # Change detection is by star data, not rendered pixels: the SVG has
-        # sub-pixel float jitter every run, so comparing SVGs would always look
-        # changed. render.ts writes a signature over the star data (day-level
-        # dates + counts). We render the first theme as a probe, compare its
-        # signature to the stored one, and only continue if it moved.
-        probe="${themes[0]}"
-        SIGFILE="$OUTPUT_DIR/.star-history.sig"
-        echo "Rendering $REPOS ($probe) as change probe"
-        # The token is passed via the GITHUB_TOKEN env var (set on this step),
-        # not on argv, so it does not appear in the process list.
-        "$R/node_modules/.bin/tsx" "$R/render.ts" \
-          --repos "$REPOS" \
-          --theme "$probe" \
-          --type "$TYPE" \
-          --width "$WIDTH" \
-          --output "$TMP/$probe.svg" \
-          --signature "$TMP/new.sig"
-
-        if [ ! -s "$TMP/$probe.svg" ]; then
-          echo "::error::Rendered SVG is empty for theme $probe"
-          exit 1
-        fi
-
-        newsig="$(cat "$TMP/new.sig")"
-        oldsig="$(cat "$SIGFILE" 2>/dev/null || true)"
-        if [ -n "$oldsig" ] && [ "$newsig" = "$oldsig" ]; then
-          echo "No star history change (signature unchanged); keeping existing charts."
-          echo "changed=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-
-        # Changed: render the remaining themes too.
-        for theme in "${themes[@]}"; do
-          [ "$theme" = "$probe" ] && continue
-          echo "Rendering $REPOS ($theme)"
-          "$R/node_modules/.bin/tsx" "$R/render.ts" \
-            --repos "$REPOS" \
-            --theme "$theme" \
-            --type "$TYPE" \
-            --width "$WIDTH" \
-            --output "$TMP/$theme.svg"
-          if [ ! -s "$TMP/$theme.svg" ]; then
-            echo "::error::Rendered SVG is empty for theme $theme"
-            exit 1
-          fi
-        done
-
-        # Changed: write timestamped files, remove the previous ones per theme.
-        TS="$(date -u +%Y%m%d%H%M%S)"
-        light=""
-        dark=""
-        files=""
-        for theme in "${themes[@]}"; do
-          final="$OUTPUT_DIR/star-history-$theme-$TS.svg"
-          cp "$TMP/$theme.svg" "$final"
-          find "$OUTPUT_DIR" -maxdepth 1 -name "star-history-$theme-*.svg" \
-            ! -name "star-history-$theme-$TS.svg" -delete 2>/dev/null || true
-          [ "$theme" = "light" ] && light="$final"
-          [ "$theme" = "dark" ] && dark="$final"
-          files="${files}${final}"$'\n'
-        done
-        # If no explicit "light" theme, use the first theme as the <img> source.
-        [ -z "$light" ] && light="$OUTPUT_DIR/star-history-${themes[0]}-$TS.svg"
-
-        # Persist the new signature so the next run can detect no-change.
-        cp "$TMP/new.sig" "$SIGFILE"
-
-        echo "changed=true" >> "$GITHUB_OUTPUT"
-        echo "light=$light" >> "$GITHUB_OUTPUT"
-        echo "dark=$dark" >> "$GITHUB_OUTPUT"
-        {
-          echo "files<<STAR_HISTORY_EOF"
-          printf '%s' "$files"
-          echo "STAR_HISTORY_EOF"
-        } >> "$GITHUB_OUTPUT"
+      run: bash "$ACTION_PATH/scripts/render-charts.sh"
 
     - name: Update README embed
       if: ${{ inputs.update-readme == 'true' && steps.render.outputs.changed == 'true' }}
@@ -204,42 +103,15 @@ runs:
         README: ${{ inputs.readme }}
         LIGHT: ${{ steps.render.outputs.light }}
         DARK: ${{ steps.render.outputs.dark }}
+        PNG: ${{ steps.render.outputs.png }}
+        README_FORMAT: ${{ inputs.readme-format }}
+        REPO: ${{ github.repository }}
+        BRANCH: ${{ github.ref_name }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        python3 - <<'PY'
-        import os, re, sys
-        readme = os.environ["README"]
-        light = os.environ["LIGHT"]
-        dark = os.environ.get("DARK", "")
-        start = "<!-- star-history:start -->"
-        end = "<!-- star-history:end -->"
-
-        if not os.path.exists(readme):
-            print(f"{readme} not found; skipping README update.")
-            sys.exit(0)
-        text = open(readme, encoding="utf-8").read()
-        if start not in text or end not in text:
-            print("star-history markers not found in README; skipping update.")
-            sys.exit(0)
-
-        if dark:
-            body = (
-                '<picture>\n'
-                f'  <source media="(prefers-color-scheme: dark)" srcset="{dark}">\n'
-                f'  <img alt="Star history" src="{light}">\n'
-                '</picture>'
-            )
-        else:
-            body = f'<img alt="Star history" src="{light}">'
-
-        block = f"{start}\n{body}\n{end}"
-        # Replace only the FIRST marker pair. A README may contain further
-        # literal marker examples (e.g. in documentation code blocks) that must
-        # not be clobbered.
-        new = re.sub(re.escape(start) + r".*?" + re.escape(end), lambda _: block, text, count=1, flags=re.S)
-        open(readme, "w", encoding="utf-8").write(new)
-        print(f"Updated {readme} between markers.")
-        PY
+        python3 "$ACTION_PATH/scripts/readme-embed.py"
 
     - name: Commit generated charts
       if: ${{ inputs.commit == 'true' && steps.render.outputs.changed == 'true' }}

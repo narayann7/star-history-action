@@ -8,18 +8,26 @@ Keep a self-updating star history chart in **your own** repository's README.
 
 On June 30, 2026 GitHub limited its stargazers endpoint to a repo's own admins and collaborators. Since then the hosted `api.star-history.com/svg` badge renders blank for many repos, so live star-history README badges stopped working.
 
-The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits the SVG into your repo so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
+The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits it into your repo (SVG, plus a PNG for package registries) so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
 
 The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so the output matches star-history.com without a headless browser or a third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
+## Endorsement
+
+The star-history maintainer pointed to this approach in the tracking issue, for anyone who would rather not hand a fine-grained token to the star-history API:
+
+> If you are not comfortable to share your fine-grained token with star-history API, then @narayann7's method is good (the tradeoff is it's a static image, though you can configure a cron to refresh it periodically).
+>
+> star-history/star-history#539: https://github.com/star-history/star-history/issues/539#issuecomment-4896077391
+
 ## Demo
 
-This action charting **its own repository** on a 6-hour schedule, the normal way a consumer would use it (via `narayann7/star-history-action@v1` and the default `github.token`). The action maintains this block itself through the marker comments below, and it fills in as the repo gains stars.
+Below is the static placeholder this repo ships. On a consumer repo the action replaces the block between the marker comments with a real chart on its first run and keeps it current on a schedule. For a live example, see a repo that uses the action, such as [fossui/fossui](https://github.com/fossui/fossui).
 
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260711025746.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260711025746.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/placeholder-dark.svg">
+  <img alt="Star history" src="assets/star-history/placeholder-light.svg">
 </picture>
 <!-- star-history:end -->
 
@@ -94,17 +102,24 @@ current chart and updates it when the chart changes:
 ```html
 <!-- star-history:start -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark-20260706120000.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light-20260706120000.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark.svg">
+  <img alt="Star history" src="assets/star-history/star-history-light.svg">
 </picture>
 <!-- star-history:end -->
 ```
 
-The filename carries a UTC timestamp that changes only when the chart changes.
-That is deliberate: a new filename forces GitHub's image cache to fetch the
-fresh chart instead of showing a stale one, and the action deletes the previous
-timestamped files so the repo does not accumulate them. The `<picture>` block
-also swaps the dark chart in automatically on GitHub's dark theme.
+Files use stable names (`star-history-light.svg`, `star-history-dark.svg`,
+`star-history.png`) and are overwritten in place. A fixed path matters for
+package registries: npm and pub.dev freeze a README's image URL, so a moving
+filename would 404 once the old file is deleted. On GitHub the chart still
+refreshes, because a push purges GitHub's image cache for that path. The
+`<picture>` block also swaps the dark chart in automatically on GitHub's dark
+theme.
+
+If your README is also published to npm or pub.dev, set `readme-format: png`.
+Those sites strip `<picture>` and do not render SVG, so the action instead
+writes a plain-markdown PNG at an absolute `raw.githubusercontent.com` URL,
+which they can display. The tradeoff is a single PNG with no dark/light swap.
 
 If you would rather manage the embed yourself, set `update-readme: false` and
 point a plain `<img>` at whatever the action writes.
@@ -114,17 +129,18 @@ point a plain `<img>` at whatever the action writes.
 | input | default | description |
 |---|---|---|
 | `repos` | current repo | Comma-separated `owner/repo` list. |
-| `output-dir` | `assets/star-history` | Where the SVGs are written. |
+| `output-dir` | `assets/star-history` | Where the chart files (SVGs and the PNG) are written. |
 | `token` | `${{ github.token }}` | Token for the stargazers API. |
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
 | `update-readme` | `true` | Rewrite the README between the `star-history` marker comments to point at the newest chart. |
 | `readme` | `README.md` | Path to the README to update. |
+| `readme-format` | `picture` | Embed style: `picture` (SVG `<picture>`, GitHub dark/light) or `png` (plain-markdown absolute-URL PNG that also renders on npm and pub.dev). |
 | `commit` | `true` | Commit and push the generated files. |
 | `commit-message` | `chore: update star history [skip ci]` | Message used when committing. |
 
-Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest chart paths).
+Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest SVG paths), and `png` (the PNG path).
 
 ## Triggers
 
