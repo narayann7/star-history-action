@@ -15,6 +15,7 @@
  *     --theme light|dark --type Date|Timeline --width <px> --output <file> \
  *     [--png <file>] [--signature <file>]
  */
+import axios from "axios";
 import { JSDOM } from "jsdom";
 import { optimize } from "svgo";
 import { Resvg } from "@resvg/resvg-js";
@@ -26,6 +27,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { fetchGoogleFontFiles } from "./googleFont";
+import { installRetry } from "./retry";
 
 // Comic Neue (SIL OFL) is vendored under fonts/ and pinned for PNG rasterization
 // so the PNG renders the same handwriting-style text on every machine, instead
@@ -133,6 +135,18 @@ async function main() {
   if (repos.length === 0) throw new Error("--repos is required");
   if (!output) throw new Error("--output is required");
   if (!token) throw new Error("GITHUB_TOKEN environment variable is required");
+
+  // The vendored star-history code calls the GitHub stargazers API through the
+  // default axios instance. Add retry-with-backoff so a transient rate-limit
+  // 403 (per-repo hourly limit or secondary/abuse limit on the Actions token)
+  // clears on its own instead of failing the whole run.
+  installRetry(axios, {
+    onRetry: ({ attempt, status, waitMs, url }) => {
+      process.stderr.write(
+        `Retry ${attempt} after HTTP ${status ?? "network error"} in ${Math.round(waitMs)}ms: ${url ?? ""}\n`,
+      );
+    },
+  });
 
   const repoData = await getRepoData(repos, token, MAX_REQUEST_AMOUNT);
 

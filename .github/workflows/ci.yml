@@ -60,6 +60,11 @@ jobs:
       - name: Font-fetch unit test
         run: renderer/node_modules/.bin/tsx renderer/googleFont.test.ts
 
+      # Retry interceptor: rate-limit 403 detection, backoff math, and the
+      # end-to-end retry loop against a mocked axios adapter. No network.
+      - name: Retry unit test
+        run: renderer/node_modules/.bin/tsx renderer/retry.test.ts
+
       # font-family end to end: PNG renders with a Google font, a bad name falls
       # back to the bundled font without failing, empty input skips the fetch,
       # and the font is part of the change signature.

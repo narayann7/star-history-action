@@ -4,6 +4,16 @@ All notable changes to this action are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-07-14
+
+### Fixed
+- Transient GitHub API rate-limit failures no longer fail the run. The renderer
+  now retries stargazer requests with backoff when GitHub returns a rate-limit
+  403 (per-repo hourly limit or a secondary/abuse limit on the Actions token),
+  429, or 5xx, honoring `Retry-After` / `x-ratelimit-reset` when present. A
+  genuine access 403 or an unauthorized 401 is not retried, so real token
+  problems still fail fast.
+
 ## [1.0.2] - 2026-07-12
 
 ### Added
