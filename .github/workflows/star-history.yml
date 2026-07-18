@@ -12,9 +12,15 @@ on:
 permissions:
   contents: write
 
+# Collapse a burst of stars into a single refresh. cancel-in-progress: true means
+# a new star cancels an in-flight/queued run instead of queuing another, so N
+# near-simultaneous stars cost one run, not N. This matters because the automatic
+# Actions token is capped at 1000 API requests/hour per repo and each render
+# spends ~40; without collapsing, a star burst drains the quota and later runs
+# 403. The chart still ends up current because the surviving run reads live data.
 concurrency:
   group: star-history
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   star-history:

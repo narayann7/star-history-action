@@ -55,9 +55,19 @@ fi
 # continue if it moved.
 probe="${themes[0]}"
 SIGFILE="$OUTPUT_DIR/.star-history.sig"
+
+# Do committed charts already exist? Used below to decide whether a transient
+# rate-limit 403 should keep the last chart (soft-fail) or fail the run.
+have_charts=true
+for theme in "${themes[@]}"; do
+  [ -f "$OUTPUT_DIR/star-history-$theme.svg" ] || have_charts=false
+done
+[ -f "$OUTPUT_DIR/star-history.png" ] || have_charts=false
+
 echo "Rendering $REPOS ($probe) as change probe"
 # The token is passed via the GITHUB_TOKEN env var (set on this step), not on
 # argv, so it does not appear in the process list.
+probe_rc=0
 "$R/node_modules/.bin/tsx" "$R/render.ts" \
   --repos "$REPOS" \
   --theme "$probe" \
@@ -66,7 +76,27 @@ echo "Rendering $REPOS ($probe) as change probe"
   --output "$TMP/$probe.svg" \
   --png "$TMP/star-history.png" \
   --font-family "${FONT_FAMILY:-}" \
-  --signature "$TMP/new.sig"
+  --signature "$TMP/new.sig" || probe_rc=$?
+
+# Exit code 75 (EX_RATE_LIMITED, set by render.ts) means the GitHub API returned
+# a rate-limit or access 403/401. The automatic Actions token is capped at 1000
+# requests/hour per repo, so a burst of runs (e.g. many stars at once) can drain
+# it and make a later run fail on the very first request. When a chart is already
+# committed, keep it and exit cleanly instead of failing the workflow red; the
+# next run refreshes it once the limit resets. With no chart yet (first run or a
+# genuinely bad token) there is nothing to keep, so fail loudly.
+if [ "$probe_rc" -eq 75 ]; then
+  if [ "$have_charts" = true ]; then
+    echo "::warning::GitHub API rate limit/access 403 while refreshing the chart; keeping the existing chart. Retries next run. If this persists, the token may lack stargazers access (see the README Token section)."
+    echo "changed=false" >> "$GITHUB_OUTPUT"
+    exit 0
+  fi
+  echo "::error::GitHub API returned 403/401 and no chart exists yet to keep. If charting a repo the default token cannot read, pass a personal access token via the 'token' input (see the README Token section)."
+  exit 1
+fi
+if [ "$probe_rc" -ne 0 ]; then
+  exit "$probe_rc"
+fi
 
 if [ ! -s "$TMP/$probe.svg" ]; then
   echo "::error::Rendered SVG is empty for theme $probe"
@@ -78,19 +108,14 @@ oldsig="$(cat "$SIGFILE" 2>/dev/null || true)"
 
 # Backward compat: a repo upgrading from the old timestamped naming has a
 # matching signature but no stable files yet. Only skip when the data is
-# unchanged AND every stable target already exists.
-have_stable=true
-for theme in "${themes[@]}"; do
-  [ -f "$OUTPUT_DIR/star-history-$theme.svg" ] || have_stable=false
-done
-[ -f "$OUTPUT_DIR/star-history.png" ] || have_stable=false
-
-if [ -n "$oldsig" ] && [ "$newsig" = "$oldsig" ] && [ "$have_stable" = true ]; then
+# unchanged AND every stable target already exists ("have_charts", computed
+# before the probe above).
+if [ -n "$oldsig" ] && [ "$newsig" = "$oldsig" ] && [ "$have_charts" = true ]; then
   echo "No star history change and stable files present; keeping existing charts."
   echo "changed=false" >> "$GITHUB_OUTPUT"
   exit 0
 fi
-if [ "$have_stable" != true ]; then
+if [ "$have_charts" != true ]; then
   echo "Stable chart files missing (first run or upgrade from timestamped naming); regenerating."
 fi
 

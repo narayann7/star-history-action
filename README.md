@@ -2,15 +2,15 @@
 
 Keep a self-updating star history chart in **your own** repository's README.
 
-> **Unofficial.** This is a community project and is not affiliated with, endorsed by, or maintained by [star-history.com](https://www.star-history.com) or its team. It reuses their open-source renderer with credit (see [Credits](#credits)).
+> **Unofficial.** Not affiliated with or endorsed by [star-history.com](https://www.star-history.com). It reuses their open-source renderer with credit (see [Credits](#credits)).
 
 ## Why
 
-On June 30, 2026 GitHub limited its stargazers endpoint to a repo's own admins and collaborators. Since then the hosted `api.star-history.com/svg` badge renders blank for many repos, so live star-history README badges stopped working.
+On June 30, 2026 GitHub restricted its stargazers endpoint to a repo's own admins and collaborators, so the hosted `api.star-history.com/svg` badge now renders blank for many repos.
 
-The access GitHub still allows is a repo's **owner or collaborator** reading **their own** repo's stargazers. This action leans on exactly that: it runs in your CI with your own access, renders the chart, and commits it into your repo (SVG, plus a PNG for package registries) so the README embeds a static file. It is meant for charting repositories you own or collaborate on. It does not scrape star-history.com and does not embed any individual stargazer's identity, only the repository owner's avatar.
+A repo's owner or collaborator can still read their own repo's stargazers. This action does exactly that: it runs in your CI with your own access, renders the chart, and commits it into your repo (an SVG, plus a PNG for package registries) so the README embeds a static file. It is for charting repos you own or collaborate on. It does not scrape star-history.com and embeds only the repo owner's avatar, no individual stargazer's identity.
 
-The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so the output matches star-history.com without a headless browser or a third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
+The chart is drawn by [star-history's own renderer](https://github.com/star-history/star-history), vendored under `renderer/vendor` and run in Node, so output matches star-history.com without a headless browser or third-party CLI. See `renderer/NOTICE.md` for the pinned commit and attribution.
 
 ## Endorsement
 
@@ -22,7 +22,7 @@ The star-history maintainer pointed to this approach in the tracking issue, for 
 
 ## Demo
 
-This repo runs the action on itself; the chart below is the real, self-updating output. On any repo the action replaces the block between the marker comments with a live chart on its first run and keeps it current on whatever triggers you configure. This repo's own chart refreshes when the repo gains a star.
+This repo runs the action on itself; the chart below is the real, self-updating output. It refreshes when the repo gains a star.
 
 <!-- star-history:start -->
 <picture>
@@ -37,22 +37,19 @@ This repo runs the action on itself; the chart below is the real, self-updating 
   schedule / new star / manual dispatch
              │
              ▼
-  ┌────────────────────────────────────┐
-  │  GitHub Action (runs in your CI)    │
-  │                                      │
-  │  render chart ──► changed?           │
-  │       │                              │
-  │       ├─ yes ─► commit SVG           │
-  │       │         + update README      │
-  │       └─ no  ─► do nothing           │
-  └──────────────────┬───────────────────┘
-                     ▼
-      README <picture> shows the chart
+  ┌──────────────────────────────────┐
+  │  GitHub Action (runs in your CI)  │
+  │                                    │
+  │  render chart ──► changed?         │
+  │       ├─ yes ─► commit SVG         │
+  │       │         + update README    │
+  │       └─ no  ─► do nothing         │
+  └────────────────┬───────────────────┘
+                   ▼
+    README <picture> shows the chart
 ```
 
-The action renders the chart with your own token, and commits it only when the
-star data actually changes. For the full flow, the `render.ts` pipeline, and the
-change-detection logic, see [docs/architecture.md](docs/architecture.md).
+The action renders with your own token and commits only when the star data actually changes. For the full `render.ts` pipeline and change-detection logic, see [docs/architecture.md](docs/architecture.md).
 
 ## Usage
 
@@ -63,7 +60,7 @@ name: Star History
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours; see the interval table below
+    - cron: '0 */6 * * *'   # every 6 hours; see interval table below
   watch:
     types: [started]        # optional: also refresh right after a new star
   workflow_dispatch:
@@ -73,7 +70,7 @@ permissions:
 
 concurrency:
   group: star-history
-  cancel-in-progress: false
+  cancel-in-progress: true  # collapse a burst of stars into one run
 
 jobs:
   star-history:
@@ -82,82 +79,52 @@ jobs:
       - uses: actions/checkout@v4
       - uses: narayann7/star-history-action@v1
         with:
-          repos: ${{ github.repository }}   # the current repo; or a list like owner/repo,owner/repo2
+          repos: ${{ github.repository }}   # or a list: owner/repo,owner/repo2
 ```
 
-> **Recommended cadence: a scheduled run every 3h, 6h, or once a day.** Star
-> counts move slowly, so anything more frequent just burns CI minutes and adds
-> noise. Avoid the 5-minute cron (it exists only for quick testing) and avoid a
-> `push` trigger: pushing on every commit re-runs the job constantly and adds
-> churn for no benefit. Pick a schedule and let it run.
-
-Then add these two marker comments to your README where you want the chart:
+Then add two marker comments to your README where you want the chart, and leave them empty:
 
 ```html
 <!-- star-history:start -->
 <!-- star-history:end -->
 ```
 
-Leave them empty. On each run the action fills the space between them with the
-current chart and updates it when the chart changes:
+On each run the action fills the space between them with the current chart and updates it when the chart changes.
 
-```html
-<!-- star-history:start -->
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/star-history/star-history-dark.svg">
-  <img alt="Star history" src="assets/star-history/star-history-light.svg">
-</picture>
-<!-- star-history:end -->
-```
+Files use stable names (`star-history-light.svg`, `star-history-dark.svg`, `star-history.png`) and are overwritten in place. A fixed path matters for package registries: npm and pub.dev freeze a README's image URL, so a moving filename would 404 once the old file is deleted. On GitHub the chart still refreshes because a push purges GitHub's image cache. The `<picture>` block also swaps in the dark chart automatically on GitHub's dark theme.
 
-Files use stable names (`star-history-light.svg`, `star-history-dark.svg`,
-`star-history.png`) and are overwritten in place. A fixed path matters for
-package registries: npm and pub.dev freeze a README's image URL, so a moving
-filename would 404 once the old file is deleted. On GitHub the chart still
-refreshes, because a push purges GitHub's image cache for that path. The
-`<picture>` block also swaps the dark chart in automatically on GitHub's dark
-theme.
+If your README is also published to npm or pub.dev, set `readme-format: png`. Those sites strip `<picture>` and do not render SVG, so the action writes a plain-markdown PNG at an absolute `raw.githubusercontent.com` URL instead. The tradeoff is a single PNG with no dark/light swap.
 
-If your README is also published to npm or pub.dev, set `readme-format: png`.
-Those sites strip `<picture>` and do not render SVG, so the action instead
-writes a plain-markdown PNG at an absolute `raw.githubusercontent.com` URL,
-which they can display. The tradeoff is a single PNG with no dark/light swap.
-
-If you would rather manage the embed yourself, set `update-readme: false` and
-point a plain `<img>` at whatever the action writes.
+To manage the embed yourself, set `update-readme: false` and point a plain `<img>` at whatever the action writes.
 
 ## Inputs
 
 | input | default | description |
 |---|---|---|
 | `repos` | current repo | Comma-separated `owner/repo` list. |
-| `output-dir` | `assets/star-history` | Where the chart files (SVGs and the PNG) are written. |
+| `output-dir` | `assets/star-history` | Where chart files (SVGs and PNG) are written. |
 | `token` | `${{ github.token }}` | Token for the stargazers API. |
 | `type` | `Date` | `Date` or `Timeline`. |
 | `themes` | `light,dark` | Comma list of themes to render. |
 | `width` | `800` | Image width in pixels. |
-| `font-family` | `` | Optional [Google Fonts](https://fonts.google.com/) family applied to the PNG chart (e.g. `Patrick Hand`). Empty uses the bundled Comic Neue. |
-| `update-readme` | `true` | Rewrite the README between the `star-history` marker comments to point at the newest chart. |
+| `font-family` | `` | Optional [Google Fonts](https://fonts.google.com/) family for the PNG (e.g. `Patrick Hand`). Empty uses the bundled Comic Neue. |
+| `update-readme` | `true` | Rewrite the README between the `star-history` markers to point at the newest chart. |
 | `readme` | `README.md` | Path to the README to update. |
-| `readme-format` | `picture` | Embed style: `picture` (SVG `<picture>`, GitHub dark/light) or `png` (plain-markdown absolute-URL PNG that also renders on npm and pub.dev). |
+| `readme-format` | `picture` | `picture` (SVG `<picture>`, GitHub dark/light) or `png` (plain-markdown absolute-URL PNG that also renders on npm and pub.dev). |
 | `commit` | `true` | Commit and push the generated files. |
-| `commit-message` | `chore: update star history [skip ci]` | Message used when committing. |
+| `commit-message` | `chore: update star history [skip ci]` | Commit message. |
 
-Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (the newest SVG paths), and `png` (the PNG path).
+Outputs: `files` (newline-separated generated paths), `changed` (`true`/`false`), `light` and `dark` (newest SVG paths), and `png` (PNG path).
 
-### Notes
-
-> **Fonts:** GitHub strips `@font-face` from SVGs it serves through `<img>`/`<picture>`, so a custom font only renders in the PNG output (`readme-format: png`), not the SVG. Set `font-family` to any Google Fonts name to restyle the PNG. The action downloads the font, reads its real internal name so it renders even when that differs from the family string, and applies it. If the download fails, it falls back to the bundled Comic Neue and the run still succeeds. Non-Latin families (for example `Noto Sans SC`) work too, though single-weight fonts render the title in the regular weight since no bold face exists.
+**Fonts:** GitHub strips `@font-face` from SVGs it serves through `<img>`/`<picture>`, so a custom font renders only in the PNG output (`readme-format: png`), not the SVG. Set `font-family` to any Google Fonts name to restyle the PNG. The action downloads the font and reads its real internal name so it renders even when that differs from the family string. If the download fails, it falls back to Comic Neue and the run still succeeds. Non-Latin families (e.g. `Noto Sans SC`) work too, though single-weight fonts render the title in the regular weight since no bold face exists.
 
 ## Triggers
 
-The recommended workflow uses these triggers:
+- **schedule** runs on a fixed cadence. Recommended: only the schedule refreshes the time axis on days with no star change, and only it can pick up unstars. This repo omits it (running on `watch` alone to keep the demo minimal), which means its chart will not refresh on quiet days or reflect an unstar.
+- **watch / started** (optional) runs right after someone stars the repo, so a new star shows without waiting for the next scheduled run. It fires on new stars only, never unstars, so it supplements the schedule. With `concurrency: cancel-in-progress: true`, a burst of stars collapses into one run. The workflow file must be on your default branch for this trigger to fire.
+- **workflow_dispatch** gives a manual run button for the first run and ad-hoc refreshes.
 
-- **schedule** runs the chart on a fixed cadence. This is the one you want, and it is strongly recommended: only the schedule refreshes the chart's time axis on days with no star change, and only it can pick up unstars. A repo that leaves it out (as this one does, running on `watch` alone to keep the demo minimal) accepts that its chart will not refresh on quiet days or reflect an unstar.
-- **watch / started** (optional) runs the chart right after someone stars the repo, so a new star shows up without waiting for the next scheduled run. It fires on new stars only, never on unstars, so it supplements the schedule rather than replacing it. Mind the churn: because change-detection commits whenever the star count moves, stars that arrive spread out over time each get their own run and their own commit, while stars that land in a tight burst coalesce (the `concurrency` group keeps the latest run and cancels the superseded ones). Either way every run spends CI minutes, so a repo that gets stars in volume should prefer the schedule alone. For this trigger to fire, the workflow file must be on your repository's default branch.
-- **workflow_dispatch** gives you a manual run button for the first run and ad-hoc refreshes.
-
-A `push` trigger is also technically possible but **not recommended**: it re-runs the job on every commit, which wastes CI minutes and adds commit churn without meaningfully fresher data.
+A `push` trigger is possible but **not recommended**: it re-runs on every commit, wasting CI minutes and adding churn without fresher data.
 
 ### Cron intervals
 
@@ -173,22 +140,35 @@ Swap the `cron` line for whichever cadence fits. All times are UTC.
 | daily | `0 0 * * *` | yes |
 | weekly | `0 0 * * 0` | fine |
 
-**Pick 3h, 6h, or daily.** Star counts move slowly, so that range is plenty. The 5-minute option is only for testing the setup; leaving it on burns CI minutes for identical charts. GitHub's minimum interval is 5 minutes anyway, scheduled runs fire approximately rather than on the dot, and a repo with no activity for 60 days has its scheduled runs paused.
+**Pick 3h, 6h, or daily.** Star counts move slowly. The 5-minute option is for testing only. GitHub's minimum interval is 5 minutes, scheduled runs fire approximately rather than on the dot, and a repo with no activity for 60 days has its scheduled runs paused.
 
 ## Token
 
-The default `${{ github.token }}` is the automatic token GitHub injects into every workflow run, scoped to the repo the workflow lives in. For your own repo that satisfies the stargazers restriction, so **most users need no personal token at all**.
+The default `${{ github.token }}` is the automatic token GitHub injects into every run, scoped to the repo the workflow lives in. For your own repo that satisfies the stargazers restriction, so **most users need no personal token**.
 
-Only if a run fails as unauthorized (for example when charting a repo the default token cannot read) supply a personal access token through the `token` input from a secret:
+Only if a run fails as unauthorized (e.g. charting a repo the default token cannot read) supply a personal access token via the `token` input from a secret:
 
 ```yaml
         with:
           token: ${{ secrets.GH_PAT }}
 ```
 
-When you do need one, use the **least privilege that works**: a classic token with only the `public_repo` scope, or a fine-grained token with read-only access limited to the repositories you chart. Do not use a broad `repo`/`workflow` token. A token with no scopes does not work against the stargazers endpoint.
+Use the **least privilege that works**: a classic token with only `public_repo` scope, or a fine-grained token with read-only access limited to the repos you chart. A token with no scopes does not work against the stargazers endpoint.
 
-The `token` input is used **only to read stargazers**. The commit and push are authorized by the credentials `actions/checkout` persists (the workflow's default `GITHUB_TOKEN`), which is why `permissions: contents: write` is required. A PAT you pass here does not authorize the push. One consequence: because the push uses the default token, it does not trigger other `on: push` workflows, and it can be rejected on a branch with required status checks.
+The `token` input reads stargazers only. The commit and push are authorized by the credentials `actions/checkout` persists (the default `GITHUB_TOKEN`), which is why `permissions: contents: write` is required. A PAT here does not authorize the push. Because the push uses the default token, it does not trigger other `on: push` workflows and can be rejected on a branch with required status checks.
+
+## Rate limits
+
+Each refresh reads the stargazers API, roughly 40 requests per run (one per stargazer page, plus a count and the owner avatar, per theme). The automatic `${{ github.token }}` is capped at **1000 requests/hour per repo** (shared across every workflow in that repo); a personal access token is capped at **5000 requests/hour per token**.
+
+A single refresh is well under either. The failure mode is a *burst*: if `watch` fires a run per star for many stars landing close together, the queued runs can drain the hourly quota and a run then fails on its first request with a `403`. star-history reports every 403 as "rate limit exceeded", so an access problem (a token that cannot read the repo) looks the same in the log.
+
+The action handles both so a transient limit does not fail your workflow:
+
+- The `watch` workflow uses `concurrency: cancel-in-progress: true`, so a burst collapses into one refresh instead of one run per star.
+- If a refresh hits a `403`/`401` while a chart is **already committed**, the run keeps that chart, warns, and exits cleanly, then refreshes on the next run once the limit resets. Only the **first** run (no chart yet) fails on a `403`, since there is nothing to keep and it usually means the token cannot read the target repo.
+
+If you chart in volume or hit this repeatedly, prefer a spread-out `schedule` over `watch`, or pass a personal access token via `token` for the higher 5000/hour limit.
 
 ## Limitation
 
@@ -196,10 +176,8 @@ Charts need a token that can read the repo's stargazers. Your own repos always w
 
 ## Credits
 
-The chart rendering is powered by [star-history](https://github.com/star-history/star-history) (MIT). Their chart code is vendored under `renderer/vendor` and does all the real work of turning stargazer data into an SVG. This action is a thin wrapper that runs it in CI and commits the result. Thanks to the star-history maintainers.
+Chart rendering is powered by [star-history](https://github.com/star-history/star-history) (MIT). Their chart code is vendored under `renderer/vendor` and does the real work of turning stargazer data into an SVG. This action is a thin wrapper that runs it in CI and commits the result. Thanks to the star-history maintainers.
 
 ## License
 
-This project is MIT. See [LICENSE](./LICENSE).
-
-It bundles star-history's code under `renderer/vendor`, which is also MIT. That license is kept intact at [`renderer/vendor/LICENSE`](./renderer/vendor/LICENSE), with attribution and the pinned commit in [`renderer/NOTICE.md`](./renderer/NOTICE.md).
+MIT. See [LICENSE](./LICENSE). It bundles star-history's code under `renderer/vendor`, also MIT, kept intact at [`renderer/vendor/LICENSE`](./renderer/vendor/LICENSE) with attribution and the pinned commit in [`renderer/NOTICE.md`](./renderer/NOTICE.md).

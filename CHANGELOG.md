@@ -4,6 +4,26 @@ All notable changes to this action are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-07-18
+
+### Fixed
+- A GitHub API rate-limit or access 403 while refreshing an already-committed
+  chart no longer fails the workflow. When a chart already exists, the run keeps
+  it and exits cleanly (logging a warning), and refreshes on the next run once
+  the limit resets. Retrying alone could not cover this: the automatic Actions
+  token's primary limit (1000 requests/hour per repo) resets up to an hour out,
+  far beyond the retry's wait cap, so a drained quota still failed the run. The
+  first run with no chart yet still fails loudly, since there is nothing to keep
+  and a 403 there usually means the token cannot read the target repo.
+- The dogfood `watch` workflow now sets `concurrency: cancel-in-progress: true`,
+  so a burst of stars collapses into a single refresh instead of queuing one run
+  per star. Each render spends ~40 API requests; without collapsing, a star
+  burst drained the per-repo hourly quota and made later runs 403.
+
+### Documentation
+- Condensed the README and added a "Rate limits" section covering the per-repo
+  1000/hour Actions-token cap, the 5000/hour PAT cap, and the burst failure mode.
+
 ## [1.0.3] - 2026-07-14
 
 ### Fixed
@@ -84,6 +104,8 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Triggers for push, cron schedule, and manual dispatch, with a documented
   own-repos scope and PAT guidance for repos the default token cannot read.
 
+[1.0.4]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.4
+[1.0.3]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.3
 [1.0.2]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.2
 [1.0.1]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.1
 [1.0.0]: https://github.com/narayann7/star-history-action/releases/tag/v1.0.0

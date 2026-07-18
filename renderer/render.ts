@@ -284,6 +284,11 @@ async function main() {
   }
 }
 
+// Exit code the shell wrapper reads to tell a transient rate-limit / access 403
+// apart from a real render failure. 75 is the conventional EX_TEMPFAIL; on it,
+// render-charts.sh keeps the last committed chart instead of failing the run.
+const EX_RATE_LIMITED = 75;
+
 main().catch((err) => {
   const msg = err?.message || String(err);
   const status = err?.status ? ` [status ${err.status}]` : "";
@@ -297,6 +302,11 @@ main().catch((err) => {
         "lack stargazers access for this repo. Charting a repo you do not own " +
         "needs a personal access token that can read it (public_repo scope).\n"
     );
+    // 403 (rate limit or access) and 401 (bad/expired token) are transient from
+    // the workflow's point of view: the automatic Actions token is capped at
+    // 1000 requests/hour per repo and a burst of runs can exhaust it, in which
+    // case a later run should keep the existing chart rather than fail red.
+    process.exit(EX_RATE_LIMITED);
   }
   process.exit(1);
 });
