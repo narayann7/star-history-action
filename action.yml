@@ -77,9 +77,21 @@ runs:
   using: 'composite'
   steps:
     - name: Set up Node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: '24'
+        # Opt out of the automatic dependency caching setup-node added in v5.
+        # When no `cache` input is given, v5+ turns caching on by itself if
+        # package.json declares npm (top-level `packageManager` or
+        # `devEngines.packageManager`), and it reads that package.json from
+        # GITHUB_WORKSPACE: the repo calling this action, not this action.
+        # That is wrong twice over here. The dependencies we install live in
+        # `$ACTION_PATH/renderer` (see the next step), so the caller's lockfile
+        # keys a cache for a dependency tree we never install; and a caller
+        # whose package.json pins npm but whose lockfile is not committed gets
+        # a hard "Dependencies lock file is not found" failure from a step that
+        # only renders a chart. false keeps the v4 behaviour consumers have.
+        package-manager-cache: false
 
     - name: Install renderer dependencies
       shell: bash
