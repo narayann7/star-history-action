@@ -76,7 +76,7 @@ jobs:
   star-history:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: narayann7/star-history-action@v1
         with:
           repos: ${{ github.repository }}   # or a list: owner/repo,owner/repo2
